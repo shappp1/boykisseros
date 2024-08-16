@@ -18,13 +18,18 @@ command_loop:
   mov cx, 255
   call gets
 
-  mov si, boykisser_cmd
+  mov si, help_cmd
   call cmps
-  jc ch_boykisser
+  jc ch_help
 
   mov si, clear_cmd
   call cmps
   jc ch_clear
+
+  mov si, boykisser_cmd
+  call cmps
+  jc ch_boykisser
+
 
   jmp ch_invalid
 
@@ -35,13 +40,18 @@ halt:
 
 ;; COMMAND HANDLERS
 
-ch_boykisser:
-  mov si, boykisser
+ch_help:
+  mov si, help_msg
   call puts
   jmp command_loop
 
 ch_clear:
   call clear
+  jmp command_loop
+
+ch_boykisser:
+  mov si, boykisser
+  call puts
   jmp command_loop
 
 ch_invalid:
@@ -154,6 +164,12 @@ clear: ; clears the screen | params: ( colour: bh ) | returns: void
 
 welcome_msg: db "Welcome to The Boykisser Operating System (BOS) :3", endl, 0
 prompt: db ":3 ", 0
+
+help_cmd: db "help", 0
+help_msg: db "help - shows this message", endl
+          db "clear - clears the screen", endl
+          db "boykisser - shows boykisser uwu", endl
+          db "electrocute - cutely kill the OS uwu", endl, 0
 
 boykisser_cmd: db "boykisser", 0
 boykisser: db "    .@.                       .@-  ", endl
