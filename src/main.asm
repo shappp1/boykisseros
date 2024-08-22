@@ -81,24 +81,41 @@ puts: ; prints a string to the screen | params: ( string: ds:si ) | returns: voi
 
 gets: ; gets a string from the user | params: ( buffer: es:di, max_count: cx ) | returns: void
   push di
+  push dx
   push cx
   push bx
   push ax
 
   xor bx, bx
+  xor dx, dx
   .loop:
     xor ah, ah
     int 0x16
     cmp ah, 0x1c
     je .end
+    cmp ah, 0x0e
+    je .backspace
 
-    test cx, cx
-    jz .loop
-    dec cx
+    cmp dx, cx
+    je .loop
+    inc dx
 
     stosb
     mov ah, 0x0e
     int 0x10
+    jmp .loop
+  .backspace:
+    test dx, dx
+    jz .loop
+    mov ah, 0x0e
+    mov al, 8
+    int 0x10
+    xor al, al
+    int 0x10
+    mov al, 8
+    int 0x10
+    dec di
+    dec dx
     jmp .loop
   .end:
     mov byte es:[di], 0
@@ -112,6 +129,7 @@ gets: ; gets a string from the user | params: ( buffer: es:di, max_count: cx ) |
     pop ax
     pop bx
     pop cx
+    pop dx
     pop di
     ret
 
@@ -168,8 +186,8 @@ prompt: db ":3 ", 0
 help_cmd: db "help", 0
 help_msg: db "help - shows this message", endl
           db "clear - clears the screen", endl
-          db "boykisser - shows boykisser uwu", endl
-          db "electrocute - cutely kill the OS uwu", endl, 0
+          db "boykisser - shows boykisser uwu", endl, 0
+          ;db "electrocute - cutely kill the OS uwu", endl, 0
 
 boykisser_cmd: db "boykisser", 0
 boykisser: db "    .@.                       .@-  ", endl

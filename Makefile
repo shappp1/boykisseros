@@ -16,7 +16,7 @@ build/main.bin: build src/main.asm
 build:
 	mkdir build
 
-run:
+run: build/main.img
 	qemu-system-i386 -drive if=floppy,file=build/main.img,format=raw &
 
 clean:
