@@ -1,4 +1,8 @@
 %define endl 10, 13
+%define FAT_buffer 0x7e00
+%define directory_buffer 0x9000
+
+%define root_entries_count 0x7c0e
 
 [ORG 0x10000]
 [BITS 16]
@@ -15,7 +19,7 @@ command_loop:
   call puts
 
   mov di, command_buffer
-  mov cx, 255
+  mov cx, 0xFF
   call gets
 
   mov si, help_cmd
@@ -30,6 +34,9 @@ command_loop:
   call cmps
   jc ch_boykisser
 
+  mov si, ls_cmd
+  call cmps
+  jc ch_ls
 
   jmp ch_invalid
 
@@ -52,6 +59,10 @@ ch_clear:
 ch_boykisser:
   mov si, boykisser
   call puts
+  jmp command_loop
+
+ch_ls:
+  ; mov di, directory_buffer
   jmp command_loop
 
 ch_invalid:
@@ -79,6 +90,51 @@ puts: ; prints a string to the screen | params: ( string: ds:si ) | returns: voi
     pop si
     ret
 
+putint: ; prints an integer to the screen | params: ( int: cx ) | returns: void
+  push dx
+  push cx
+  push bx
+  push ax
+
+  xor bx, bx
+  cmp al, 0
+  jz .zero
+  jg .loop
+  neg cx
+  mov ah, 0x0e
+  mov al, '-'
+  int 0x10
+  .loop:
+    mov ax, cx
+    mov cx, 10
+    xor dx, dx
+    div cx
+    push dx
+    inc bl
+    mov cx, ax
+    test cx, cx
+    jz .print
+    jmp .loop
+  .zero:
+    mov ah, 0x0e
+    mov al, '0'
+    int 0x10
+    jmp .end
+  .print:
+    pop ax
+    mov ah, 0x0e
+    add al, '0'
+    int 0x10
+    dec bl
+    test bl, bl
+    jnz .print
+  .end:
+    pop ax
+    pop bx
+    pop cx
+    pop dx
+    ret
+
 gets: ; gets a string from the user | params: ( buffer: es:di, max_count: cx ) | returns: void
   push di
   push dx
@@ -91,10 +147,10 @@ gets: ; gets a string from the user | params: ( buffer: es:di, max_count: cx ) |
   .loop:
     xor ah, ah
     int 0x16
-    cmp ah, 0x1c
-    je .end
     cmp ah, 0x0e
     je .backspace
+    cmp ah, 0x1c
+    je .end
 
     cmp dx, cx
     je .loop
@@ -184,10 +240,13 @@ welcome_msg: db "Welcome to The Boykisser Operating System (BOS) :3", endl, 0
 prompt: db ":3 ", 0
 
 help_cmd: db "help", 0
-help_msg: db "help - shows this message", endl
-          db "clear - clears the screen", endl
-          db "boykisser - shows boykisser uwu", endl, 0
+help_msg: db "help - show this message", endl
+          db "clear - clear the screen", endl
+          db "boykisser - show boykisser UwU", endl
+          db "ls - list contents of current working directory", endl, 0
           ;db "electrocute - cutely kill the OS uwu", endl, 0
+
+clear_cmd: db "clear", 0
 
 boykisser_cmd: db "boykisser", 0
 boykisser: db "    .@.                       .@-  ", endl
@@ -215,8 +274,9 @@ boykisser: db "    .@.                       .@-  ", endl
            db "          *@@@@@@@@@@@@@@@@#       ", endl
            db "          @@@@@@@@@@@@@@@@@@       ", endl, 0
 
-clear_cmd: db "clear", 0
+ls_cmd: db "ls", 0
 
+endl_msg: db endl, 0
 invalid_msg: db "Uh oh you used an invalid command >:(", endl, 0
 
 command_buffer: times 256 db 255
