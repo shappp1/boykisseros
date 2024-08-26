@@ -87,12 +87,21 @@ ch_ls:
     cmp cl, 0
     jg .name_loop
     test ch, ch
-    jz .next
+    jz .is_dir
     mov al, ' '
     int 0x10
     mov cl, 3
     xor ch, ch
     jmp .name_loop
+  .is_dir:
+    test byte ds:[si], 0x10
+    jz .next
+    pop ds
+    push si
+    mov si, dir_msg
+    call puts
+    pop si
+    push ds
   .next:
     mov al, 10
     int 0x10
@@ -282,11 +291,14 @@ welcome_msg: db "Welcome to The Boykisser Operating System (BOS) :3", endl, 0
 prompt: db ":3 ", 0
 
 help_cmd: db "help", 0
-help_msg: db "help - show this message", endl
-          db "clear - clear the screen", endl
-          db "boykisser - show boykisser UwU", endl
-          db "ls - list contents of current working directory", endl, 0
-          ;db "electrocute - cutely kill the OS uwu", endl, 0
+help_msg: db "BOS v0.1-ALPHA | DEV", endl
+          db "GENERIC:", endl
+          db "  help - show this message", endl
+          db "  clear - clear the screen", endl
+          db "  boykisser - show boykisser UwU", endl
+          ;db "  electrocute - cutely kill the OS uwu", endl, 0
+          db "FILESYSTEM:", endl
+          db "  ls - list contents of current working directory", endl, 0
 
 clear_cmd: db "clear", 0
 
@@ -317,8 +329,9 @@ boykisser: db "    .@.                       .@-  ", endl
            db "          @@@@@@@@@@@@@@@@@@       ", endl, 0
 
 ls_cmd: db "ls", 0
+dir_msg: db " <DIR>    ", 0
 
-endl_msg: db endl, 0
 invalid_msg: db "Uh oh you used an invalid command >:(", endl, 0
+endl_msg: db endl, 0
 
-command_buffer: times 256 db 255
+command_buffer: times 256 db 0
