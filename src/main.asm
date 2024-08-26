@@ -4,12 +4,14 @@
 
 %define root_entries_count 0x7c0e
 
+%define colour 0x07
+
 [ORG 0x10000]
 [BITS 16]
 
 ;; CODE
 
-mov bh, 0x07
+mov bh, colour
 call clear
 mov si, welcome_msg
 call puts
@@ -53,6 +55,7 @@ ch_help:
   jmp command_loop
 
 ch_clear:
+  mov bh, colour
   call clear
   jmp command_loop
 
@@ -62,8 +65,47 @@ ch_boykisser:
   jmp command_loop
 
 ch_ls:
-  ; mov di, directory_buffer
-  jmp command_loop
+  push ds
+  xor bx, bx
+  mov ds, bx
+  mov ah, 0x0e
+  mov si, directory_buffer
+  add si, 0x20
+  .outer_loop:
+    cmp byte ds:[si], 0x05
+    je .skip
+    cmp byte ds:[si], 0xE5
+    je .skip
+    cmp byte ds:[si], 0
+    je .end
+    mov ch, 1
+    mov cl, 8
+  .name_loop:
+    lodsb
+    int 0x10
+    dec cl
+    cmp cl, 0
+    jg .name_loop
+    test ch, ch
+    jz .next
+    mov al, ' '
+    int 0x10
+    mov cl, 3
+    xor ch, ch
+    jmp .name_loop
+  .next:
+    mov al, 10
+    int 0x10
+    mov al, 13
+    int 0x10
+    add si, 0x15
+    jmp .outer_loop
+  .skip:
+    add si, 0x20
+    jmp .outer_loop
+  .end:
+    pop ds
+    jmp command_loop
 
 ch_invalid:
   mov si, invalid_msg
