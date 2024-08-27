@@ -1,4 +1,5 @@
 %define endl 10, 13
+%define end2l 10, 10, 13
 %define FAT_buffer 0x7e00
 %define directory_buffer 0x9000
 
@@ -69,60 +70,10 @@ ch_boyfetch:
   jmp command_loop
 
 ch_restart:
-  mov word fs:[0x0472], 0
+  mov word ss:[0x0472], 0
   jmp 0xf000:0xfff0
 
-ch_ls:
-  push ds
-  xor bx, bx
-  mov ds, bx
-  mov ah, 0x0e
-  mov si, directory_buffer
-  add si, 0x20
-  .outer_loop:
-    cmp byte ds:[si], 0x05
-    je .skip
-    cmp byte ds:[si], 0xE5
-    je .skip
-    cmp byte ds:[si], 0
-    je .end
-    mov ch, 1
-    mov cl, 8
-  .name_loop:
-    lodsb
-    int 0x10
-    dec cl
-    cmp cl, 0
-    jg .name_loop
-    test ch, ch
-    jz .is_dir
-    mov al, ' '
-    int 0x10
-    mov cl, 3
-    xor ch, ch
-    jmp .name_loop
-  .is_dir:
-    test byte ds:[si], 0x10
-    jz .next
-    pop ds
-    push si
-    mov si, dir_msg
-    call puts
-    pop si
-    push ds
-  .next:
-    mov al, 10
-    int 0x10
-    mov al, 13
-    int 0x10
-    add si, 0x15
-    jmp .outer_loop
-  .skip:
-    add si, 0x20
-    jmp .outer_loop
-  .end:
-    pop ds
-    jmp command_loop
+%include "src/ch_file.asm"
 
 ch_invalid:
   mov si, invalid_msg
@@ -156,8 +107,8 @@ putint: ; prints an integer to the screen | params: ( int: cx ) | returns: void
   push ax
 
   xor bx, bx
-  cmp al, 0
-  jz .zero
+  cmp cx, 0
+  je .zero
   jg .loop
   neg cx
   mov ah, 0x0e
@@ -338,6 +289,7 @@ boyfetch_msg: db "    .@.                       .@-", endl
 restart_cmd: db "restart", 0
 
 ls_cmd: db "ls", 0
+ls_msg: db "Directory for ::/", end2l, 0
 dir_msg: db " <DIR>    ", 0
 
 invalid_msg: db "Uh oh you used an invalid command >:(", endl, 0
