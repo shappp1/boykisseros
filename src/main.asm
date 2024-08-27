@@ -32,9 +32,9 @@ command_loop:
   call cmps
   jc ch_clear
 
-  mov si, boykisser_cmd
+  mov si, boyfetch_cmd
   call cmps
-  jc ch_boykisser
+  jc ch_boyfetch
 
   mov si, restart_cmd
   call cmps
@@ -63,8 +63,8 @@ ch_clear:
   call clear
   jmp command_loop
 
-ch_boykisser:
-  mov si, boykisser
+ch_boyfetch:
+  mov si, boyfetch_msg
   call puts
   jmp command_loop
 
@@ -303,38 +303,38 @@ help_msg: db "BOS v0.1-ALPHA | DEV", endl
           db "GENERIC:", endl
           db "  help - show this message", endl
           db "  clear - clear the screen", endl
-          db "  boykisser - show boykisser UwU", endl
+          db "  boyfetch - show boykisser and OS info UwU", endl
           db "  restart - restart the operating system", endl, 0
           db "FILESYSTEM:", endl
           db "  ls - list contents of current working directory", endl, 0
 
 clear_cmd: db "clear", 0
 
-boykisser_cmd: db "boykisser", 0
-boykisser: db "    .@.                       .@-  ", endl
-           db "   .@@@@.                   .@@@@. ", endl
-           db "  .@@@@@@%    @#..         @@@@@@@ ", endl
-           db "  @@@@@@@@@.  =@@@@@:    @@@@@@@@@.", endl
-           db " .@@@@@@@@@@@  :=@@@@@%:@@@@@@@@@@.", endl
-           db " .@@@@@@@@@+@@@@@@@@@@@@@@@@@@@@@@.", endl
-           db "  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ ", endl
-           db "  #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@# ", endl
-           db "   @@@@@@@@@@@@@@@@@-   ++.*@@@@@  ", endl
-           db "    @@@.@@.   @@@@@@    @@@+@@@:   ", endl
-           db ".@%-:@@@@@-   @@@@@@.   @@@.@@@@@  ", endl
-           db "  @@@@@=@@@  -@@@@@@@*:@@@@*@@@=   ", endl
-           db "   .@-=@=@@@@@@@@@@@@@@@@-%+@@@    ", endl
-           db "  .@@@@@@@@@@%##:%::@@@@@@@@@@@@#  ", endl
-           db "    .  =@@@@@@@@@@@@@@@@@@.        ", endl
-           db "          @=..@@@@@@@@@@           ", endl
-           db "            @@@@@@@@@@@@@          ", endl
-           db "           @@@@@@@@@@@@@@+         ", endl
-           db "            %@@@@@@@@@@@@@.        ", endl
-           db "           .@@@@@@@@@@@@@@@        ", endl
-           db "           @@@@@@@@@@@@@@@@.       ", endl
-           db "           @@@@@@@@@@@@@@@@.       ", endl
-           db "          *@@@@@@@@@@@@@@@@#       ", endl
-           db "          @@@@@@@@@@@@@@@@@@       ", endl, 0
+boyfetch_cmd: db "boyfetch", 0
+boyfetch_msg: db "    .@.                       .@-", endl
+              db "   .@@@@.                   .@@@@.", endl
+              db "  .@@@@@@%    @#..         @@@@@@@", endl
+              db "  @@@@@@@@@.  =@@@@@:    @@@@@@@@@.", endl
+              db " .@@@@@@@@@@@  :=@@@@@%:@@@@@@@@@@.", endl
+              db " .@@@@@@@@@+@@@@@@@@@@@@@@@@@@@@@@.", endl
+              db "  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@     (TO BE EXPANDED)", endl
+              db "  #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#     BOS v0.1-ALPHA", endl
+              db "   @@@@@@@@@@@@@@@@@-   ++.*@@@@@      DEV BUILD", endl
+              db "    @@@.@@.   @@@@@@    @@@+@@@:", endl
+              db ".@%-:@@@@@-   @@@@@@.   @@@.@@@@@      SPECS:", endl
+              db "  @@@@@=@@@  -@@@@@@@*:@@@@*@@@=         Architecture: x86(_64)", endl
+              db "   .@-=@=@@@@@@@@@@@@@@@@-%+@@@          File System:  FAT12", endl
+              db "  .@@@@@@@@@@%##:%::@@@@@@@@@@@@#", endl
+              db "    .  =@@@@@@@@@@@@@@@@@@.            AUTHOR:", endl
+              db "          @=..@@@@@@@@@@                 Name:   Shane Goodrick", endl
+              db "            @@@@@@@@@@@@@                GitHub: https://github.com/shappp1", endl
+              db "           @@@@@@@@@@@@@@+", endl
+              db "            %@@@@@@@@@@@@@.", endl
+              db "           .@@@@@@@@@@@@@@@", endl
+              db "           @@@@@@@@@@@@@@@@.", endl
+              db "           @@@@@@@@@@@@@@@@.", endl
+              db "          *@@@@@@@@@@@@@@@@#", endl
+              db "          @@@@@@@@@@@@@@@@@@", endl, 0
 
 restart_cmd: db "restart", 0
 
