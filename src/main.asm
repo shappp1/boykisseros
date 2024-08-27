@@ -24,6 +24,9 @@ command_loop:
   mov di, command_buffer
   mov cx, 0xFF
   call gets
+  mov si, di
+  call splitargs
+  mov ax, si
 
   mov si, help_cmd
   call cmps
@@ -32,6 +35,10 @@ command_loop:
   mov si, clear_cmd
   call cmps
   jc ch_clear
+
+  mov si, echo_cmd
+  call cmps
+  jc ch_echo
 
   mov si, boyfetch_cmd
   call cmps
@@ -62,6 +69,13 @@ ch_help:
 ch_clear:
   mov bh, colour
   call clear
+  jmp command_loop
+
+ch_echo:
+  mov si, ax
+  call puts
+  mov si, endl_msg
+  call puts
   jmp command_loop
 
 ch_boyfetch:
@@ -199,6 +213,25 @@ gets: ; gets a string from the user | params: ( buffer: es:di, max_count: cx ) |
     pop di
     ret
 
+splitargs: ; looks for the first space in a string, changes it to 0, and returns address of character after space | params: ( command: ds:si ) | returns: ( arg: ds:si )
+  push ax
+
+  .loop:
+    lodsb
+    cmp al, ' '
+    je .space
+    test al, al
+    jz .zero
+    jmp .loop
+  .zero:
+    dec si
+    jmp .end
+  .space:
+    mov byte ds:[si-1], 0
+  .end:
+    pop ax
+    ret
+
 cmps: ; compares two strings | params: ( string1: ds:si, string2: es:di ) | returns: ( equal: CF )
   push di
   push si
@@ -253,6 +286,7 @@ help_cmd: db "help", 0
 help_msg: db "GENERIC:", endl
           db "  help - show this message", endl
           db "  clear - clear the screen", endl
+          db "  echo - print a message to the screen"
           db "  boyfetch - show boykisser and OS info UwU", endl
           db "  restart - restart the operating system", endl
           db "FILESYSTEM:", endl
@@ -260,16 +294,18 @@ help_msg: db "GENERIC:", endl
 
 clear_cmd: db "clear", 0
 
+echo_cmd: db "echo", 0
+
 boyfetch_cmd: db "boyfetch", 0
 boyfetch_msg: db "    .@.                       .@-", endl
               db "   .@@@@.                   .@@@@.", endl
               db "  .@@@@@@%    @#..         @@@@@@@", endl
               db "  @@@@@@@@@.  =@@@@@:    @@@@@@@@@.", endl
               db " .@@@@@@@@@@@  :=@@@@@%:@@@@@@@@@@.", endl
-              db " .@@@@@@@@@+@@@@@@@@@@@@@@@@@@@@@@.", endl
-              db "  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@     (TO BE EXPANDED)", endl
-              db "  #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#     BOS v0.1-ALPHA", endl
-              db "   @@@@@@@@@@@@@@@@@-   ++.*@@@@@      DEV BUILD", endl
+              db " .@@@@@@@@@+@@@@@@@@@@@@@@@@@@@@@@.    (TO BE EXPANDED)", endl
+              db "  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@     The Boykisser Operating System (BOS)", endl
+              db "  #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#     VERSION: v0.1-ALPHA", endl
+              db "   @@@@@@@@@@@@@@@@@-   ++.*@@@@@      BUILD: DEV", endl
               db "    @@@.@@.   @@@@@@    @@@+@@@:", endl
               db ".@%-:@@@@@-   @@@@@@.   @@@.@@@@@      SPECS:", endl
               db "  @@@@@=@@@  -@@@@@@@*:@@@@*@@@=         Architecture: x86(_64)", endl
