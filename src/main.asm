@@ -304,7 +304,7 @@ help_msg: db "BOS v0.1-ALPHA | DEV", endl
           db "  help - show this message", endl
           db "  clear - clear the screen", endl
           db "  boyfetch - show boykisser and OS info UwU", endl
-          db "  restart - restart the operating system", endl, 0
+          db "  restart - restart the operating system", endl
           db "FILESYSTEM:", endl
           db "  ls - list contents of current working directory", endl, 0
 
