@@ -299,8 +299,7 @@ welcome_msg: db "Welcome to The Boykisser Operating System (BOS) :3", endl, 0
 prompt: db ":3 ", 0
 
 help_cmd: db "help", 0
-help_msg: db "BOS v0.1-ALPHA | DEV", endl
-          db "GENERIC:", endl
+help_msg: db "GENERIC:", endl
           db "  help - show this message", endl
           db "  clear - clear the screen", endl
           db "  boyfetch - show boykisser and OS info UwU", endl
