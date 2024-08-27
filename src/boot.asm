@@ -37,6 +37,7 @@ start:
   xor ax, ax
   mov ds, ax
   mov es, ax
+  mov fs, ax
   mov ss, ax
   mov sp, 0x7c00
 

@@ -36,6 +36,10 @@ command_loop:
   call cmps
   jc ch_boykisser
 
+  mov si, restart_cmd
+  call cmps
+  jc ch_restart
+
   mov si, ls_cmd
   call cmps
   jc ch_ls
@@ -63,6 +67,10 @@ ch_boykisser:
   mov si, boykisser
   call puts
   jmp command_loop
+
+ch_restart:
+  mov word fs:[0x0472], 0
+  jmp 0xf000:0xfff0
 
 ch_ls:
   push ds
@@ -296,7 +304,7 @@ help_msg: db "BOS v0.1-ALPHA | DEV", endl
           db "  help - show this message", endl
           db "  clear - clear the screen", endl
           db "  boykisser - show boykisser UwU", endl
-          ;db "  electrocute - cutely kill the OS uwu", endl, 0
+          db "  restart - restart the operating system", endl, 0
           db "FILESYSTEM:", endl
           db "  ls - list contents of current working directory", endl, 0
 
@@ -327,6 +335,8 @@ boykisser: db "    .@.                       .@-  ", endl
            db "           @@@@@@@@@@@@@@@@.       ", endl
            db "          *@@@@@@@@@@@@@@@@#       ", endl
            db "          @@@@@@@@@@@@@@@@@@       ", endl, 0
+
+restart_cmd: db "restart", 0
 
 ls_cmd: db "ls", 0
 dir_msg: db " <DIR>    ", 0
