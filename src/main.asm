@@ -159,6 +159,104 @@ putint: ; prints an integer to the screen | params: ( int: cx ) | returns: void
     pop dx
     ret
 
+; NOTE: dh and dl are optional, load with 0 to disable
+fputuint32: ; prints an integer to the screen | params: ( int: ecx, seperator: dh, align_right: dl ) | returns: void
+  push edx
+  push ecx
+  push bx
+  push eax
+
+  test dl, dl
+  jz .no_align
+  mov bl, 1
+  mov eax, 10
+  .align_loop:
+    cmp ecx, eax
+    jl .align
+    inc bl
+    lea eax, [eax + eax * 4]
+    add eax, eax
+    jmp .align_loop
+  .align:
+    test dh, dh
+    jz .no_sep_align
+    cmp bl, 9
+    jg .sep_align_3
+    cmp bl, 6
+    jg .sep_align_2
+    cmp bl, 3
+    jg .sep_align_1
+    jmp .no_sep_align
+    .sep_align_3:
+      dec dl
+    .sep_align_2:
+      dec dl
+    .sep_align_1:
+      dec dl
+  .no_sep_align:
+    sub dl, bl
+    cmp dl, 0
+    jle .no_align
+    mov ah, 0x0e
+    mov al, ' '
+    xor bh, bh
+    .space_loop:
+      int 0x10
+      dec dl
+      cmp dl, 0
+      jg .space_loop
+  .no_align:
+  test ecx, ecx
+  jz .zero
+  xor bl, bl
+  mov bh, dh
+  .loop:
+    mov eax, ecx
+    mov ecx, 10
+    xor edx, edx
+    div ecx
+    push dx
+    inc bl
+    mov ecx, eax
+    test ecx, ecx
+    jz .print
+    jmp .loop
+  .zero:
+    mov ah, 0x0e
+    mov al, '0'
+    int 0x10
+    jmp .end
+  .print:
+    mov dh, bh
+    xor bh, bh
+  .print_loop:
+    pop ax
+    mov ah, 0x0e
+    add al, '0'
+    int 0x10
+    dec bl
+    test dh, dh
+    jz .no_sep
+    cmp bl, 9
+    je .sep 
+    cmp bl, 6
+    je .sep
+    cmp bl, 3
+    je .sep
+    jmp .no_sep
+  .sep:
+    mov al, dh
+    int 0x10
+  .no_sep:
+    test bl, bl
+    jnz .print_loop
+  .end:
+    pop eax
+    pop bx
+    pop ecx
+    pop edx
+    ret
+
 gets: ; gets a string from the user | params: ( buffer: es:di, max_count: cx ) | returns: void
   push di
   push dx
@@ -328,7 +426,7 @@ ls_cmd: db "ls", 0
 ls_msg: db "Directory for ::/", end2l, 0
 dir_msg: db " <DIR>    ", 0
 
-invalid_msg: db "Uh oh you used an invalid command >:(", endl, 0
+invalid_msg: db "Uh oh you used an invalid command >:3", endl, 0
 endl_msg: db endl, 0
 
 command_buffer: times 256 db 0

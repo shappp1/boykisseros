@@ -41,10 +41,8 @@ ch_ls:
     jmp .next
   .put_size:
     mov ecx, ds:[si + 0x11] ; size
-    mov al, 10
-    pop ds
-    call rputint32
-    push ds
+    mov dx, 10
+    call fputuint32
   .next:
     xor cx, cx
     mov ds, cx
@@ -60,56 +58,3 @@ ch_ls:
   .end:
     pop ds
     jmp command_loop
-
-;; LOCAL FUNCTIONS
-
-rputint32: ; right-aligned put int32 | params: ( int: ecx, max: al ) | returns: void
-  push di
-  push si
-  push edx
-  push ecx
-  push eax
-
-  push cx
-  mov di, .buffer_start
-  mov al, ' '
-  mov cx, 10
-  rep stosb
-  pop cx
-
-  mov di, .buffer_end
-  std
-  test ecx, ecx
-  jz .zero
-  .loop:
-    mov eax, ecx
-    mov ecx, 10
-    xor edx, edx
-    div ecx
-    mov ecx, eax
-    mov eax, edx
-    add al, '0'
-    stosb
-    test ecx, ecx
-    jz .end
-    jmp .loop
-  .zero:
-    mov al, '0'
-    stosb
-  .end:
-    cld
-    pop eax
-    push eax
-    xor ah, ah
-    mov si, .buffer_start
-    add si, 10
-    sub si, ax
-    call puts
-    pop eax
-    pop ecx
-    pop edx
-    pop si
-    pop di
-    ret
-  .buffer_start: times 9 db 0
-  .buffer_end: times 2 db 0
