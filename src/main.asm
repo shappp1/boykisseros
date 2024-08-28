@@ -5,24 +5,25 @@
 
 %define root_entries_count 0x7c0e
 
-%define colour 0x07
+%define colour 0x1f
 
 [ORG 0x10000]
 [BITS 16]
 
 ;; CODE
 
-mov bh, colour
 call clear
 mov si, welcome_msg
 call puts
 
 command_loop:
+  mov bh, colour
+  call setcolor
   mov si, prompt
   call puts
 
   mov di, command_buffer
-  mov cx, 0xFF
+  mov cx, 76
   call gets
   mov si, di
   call splitargs
@@ -52,6 +53,10 @@ command_loop:
   call cmps
   jc ch_ls
 
+  mov si, numtest_cmd
+  call cmps
+  jc ch_numtest
+
   jmp ch_invalid
 
 halt:
@@ -67,7 +72,6 @@ ch_help:
   jmp command_loop
 
 ch_clear:
-  mov bh, colour
   call clear
   jmp command_loop
 
@@ -88,6 +92,27 @@ ch_restart:
   jmp 0xf000:0xfff0
 
 %include "src/ch_file.asm"
+
+ch_numtest:
+  mov si, endl_msg
+  mov ecx, 134
+  mov dx, 0x008f
+  call fputint32
+  call puts
+  mov ecx, -3514
+  call fputint32
+  call puts
+  mov dh, ','
+  call fputint32
+  call puts
+  mov dl, 0x0f
+  call fputint32
+  call puts
+  mov ecx, 1234
+  xor dl, dl
+  call fputint32
+  call puts
+  jmp command_loop
 
 ch_invalid:
   mov si, invalid_msg
@@ -114,60 +139,47 @@ puts: ; prints a string to the screen | params: ( string: ds:si ) | returns: voi
     pop si
     ret
 
-putint: ; prints an integer to the screen | params: ( int: cx ) | returns: void
-  push dx
-  push cx
-  push bx
+setcolor: ; sets color attribute for entire screen | params: ( colour: bh ) | returns: void
+  push ds
+  push si
   push ax
-
-  xor bx, bx
-  cmp cx, 0
-  je .zero
-  jg .loop
-  neg cx
-  mov ah, 0x0e
-  mov al, '-'
-  int 0x10
+  mov ax, 0xb800
+  mov ds, ax
+  xor si, si
   .loop:
-    mov ax, cx
-    mov cx, 10
-    xor dx, dx
-    div cx
-    push dx
-    inc bl
-    mov cx, ax
-    test cx, cx
-    jz .print
-    jmp .loop
-  .zero:
-    mov ah, 0x0e
-    mov al, '0'
-    int 0x10
-    jmp .end
-  .print:
-    pop ax
-    mov ah, 0x0e
-    add al, '0'
-    int 0x10
-    dec bl
-    test bl, bl
-    jnz .print
-  .end:
-    pop ax
-    pop bx
-    pop cx
-    pop dx
-    ret
+    inc si
+    mov ds:[si], bh
+    inc si
+    cmp si, 0xFA0
+    jl .loop
+  pop ax
+  pop si
+  pop ds
+  ret
 
 ; NOTE: dh and dl are optional, load with 0 to disable
-fputuint32: ; prints an integer to the screen | params: ( int: ecx, seperator: dh, align_right: dl ) | returns: void
+; WARNING: align_right must have enough space to fit entire number, including seperators and signs, otherwise there will be undefined behaviour
+fputint32: ; prints an integer to the screen | params: ( int: ecx, seperator: dh, align_right: dl & 0x7F, is_signed: dl & 0x80 ) | returns: void
   push edx
   push ecx
   push bx
   push eax
 
-  test dl, dl
+  test dl, 0x80
+  jz .unsigned
+  and dl, 0x7F
+  cmp ecx, 0
+  jge .unsigned
+  neg ecx
+  or dl, 0x80
+  .unsigned:
+  test dl, 0x7F
   jz .no_align
+  cmp ecx, 0
+  jge .not_large
+  mov bl, 10
+  jmp .align
+  .not_large:
   mov bl, 1
   mov eax, 10
   .align_loop:
@@ -178,6 +190,10 @@ fputuint32: ; prints an integer to the screen | params: ( int: ecx, seperator: d
     add eax, eax
     jmp .align_loop
   .align:
+    test dl, 0x80
+    jz .no_neg_align
+    dec dl
+    .no_neg_align:
     test dh, dh
     jz .no_sep_align
     cmp bl, 9
@@ -195,7 +211,7 @@ fputuint32: ; prints an integer to the screen | params: ( int: ecx, seperator: d
       dec dl
   .no_sep_align:
     sub dl, bl
-    cmp dl, 0
+    test dl, 0x7f
     jle .no_align
     mov ah, 0x0e
     mov al, ' '
@@ -203,11 +219,18 @@ fputuint32: ; prints an integer to the screen | params: ( int: ecx, seperator: d
     .space_loop:
       int 0x10
       dec dl
-      cmp dl, 0
+      test dl, 0x7f                                            
       jg .space_loop
   .no_align:
   test ecx, ecx
   jz .zero
+  test dl, 0x80
+  jz .pos
+  mov ah, 0x0e
+  mov al, '-'
+  xor bh, bh
+  int 0x10
+  .pos:
   xor bl, bl
   mov bh, dh
   .loop:
@@ -356,21 +379,21 @@ cmps: ; compares two strings | params: ( string1: ds:si, string2: es:di ) | retu
     pop di
     ret
 
-clear: ; clears the screen | params: ( colour: bh ) | returns: void
+clear: ; clears the screen | params: void | returns: void
   push dx
   push cx
+  push bx
   push ax
   mov ax, 0x0700
+  xor bh, bh
   xor cx, cx
   mov dx, 0x184f
   int 0x10
   mov ah, 0x02
-  mov ch, bh
-  xor bh, bh
   xor dx, dx
   int 0x10
-  mov bh, ch
   pop ax
+  pop bx
   pop cx
   pop dx
   ret
@@ -384,11 +407,13 @@ help_cmd: db "help", 0
 help_msg: db "GENERIC:", endl
           db "  help - show this message", endl
           db "  clear - clear the screen", endl
-          db "  echo - print a message to the screen"
+          db "  echo - print a message to the screen", endl
           db "  boyfetch - show boykisser and OS info UwU", endl
           db "  restart - restart the operating system", endl
           db "FILESYSTEM:", endl
-          db "  ls - list contents of current working directory", endl, 0
+          db "  ls - list contents of current working directory", endl
+          db "DEBUG:", endl
+          db "  numtest - performs various tests for printing numbers", endl, 0
 
 clear_cmd: db "clear", 0
 
@@ -425,6 +450,8 @@ restart_cmd: db "restart", 0
 ls_cmd: db "ls", 0
 ls_msg: db "Directory for ::/", end2l, 0
 dir_msg: db " <DIR>    ", 0
+
+numtest_cmd: db "numtest", 0
 
 invalid_msg: db "Uh oh you used an invalid command >:3", endl, 0
 endl_msg: db endl, 0

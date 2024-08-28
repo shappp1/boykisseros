@@ -42,7 +42,7 @@ ch_ls:
   .put_size:
     mov ecx, ds:[si + 0x11] ; size
     mov dx, 10
-    call fputuint32
+    call fputint32
   .next:
     xor cx, cx
     mov ds, cx
