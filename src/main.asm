@@ -1,11 +1,10 @@
+%define default_color 0x07
+
 %define endl 10, 13
 %define end2l 10, 10, 13
+
 %define FAT_buffer 0x7e00
 %define directory_buffer 0x9000
-
-%define root_entries_count 0x7c0e
-
-%define colour 0x1f
 
 [ORG 0x10000]
 [BITS 16]
@@ -17,13 +16,11 @@ mov si, welcome_msg
 call puts
 
 command_loop:
-  mov bh, colour
-  call setcolor
   mov si, prompt
   call puts
 
   mov di, command_buffer
-  mov cx, 76
+  mov cx, 0xFF
   call gets
   mov si, di
   call splitargs
@@ -40,6 +37,10 @@ command_loop:
   mov si, echo_cmd
   call cmps
   jc ch_echo
+
+  mov si, color_cmd
+  call cmps
+  jc ch_color
 
   mov si, boyfetch_cmd
   call cmps
@@ -82,6 +83,22 @@ ch_echo:
   call puts
   jmp command_loop
 
+ch_color:
+  mov si, ax
+  call strlen
+  cmp cx, 0
+  jle .inv
+  cmp cx, 2
+  jg .inv
+  call hex2word
+  jc .inv
+  mov [color], cl
+  jmp command_loop
+  .inv:
+    mov si, color_msg
+    call puts
+    jmp command_loop
+
 ch_boyfetch:
   mov si, boyfetch_msg
   call puts
@@ -121,10 +138,22 @@ ch_invalid:
 
 ;; FUNCTIONS
 
+putch: ; prints a character to the screen | params: ( char: al ) | returns: void
+  push bx
+  push ax
+  mov ah, 0x0e
+  xor bx, bx
+  int 0x10
+  mov bh, [color]
+  call setcolor
+  pop ax
+  pop bx
+  ret
+
 puts: ; prints a string to the screen | params: ( string: ds:si ) | returns: void
   push si
-  push ax
   push bx
+  push ax
   xor bh, bh
   mov ah, 0x0e
   .loop:
@@ -134,10 +163,23 @@ puts: ; prints a string to the screen | params: ( string: ds:si ) | returns: voi
     int 0x10
     jmp .loop
   .end:
-    pop bx
+    mov bh, [color]
+    call setcolor
     pop ax
+    pop bx
     pop si
     ret
+
+strlen: ; gets the length of a string | params: ( string: ds:si ) | returns ( length: cx )
+  push si
+  mov cx, -1
+  .loop:
+    lodsb
+    inc cx
+    test al, al
+    jnz .loop
+  pop si
+  ret
 
 setcolor: ; sets color attribute for entire screen | params: ( colour: bh ) | returns: void
   push ds
@@ -213,11 +255,9 @@ fputint32: ; prints an integer to the screen | params: ( int: ecx, seperator: dh
     sub dl, bl
     test dl, 0x7f
     jle .no_align
-    mov ah, 0x0e
     mov al, ' '
-    xor bh, bh
     .space_loop:
-      int 0x10
+      call putch
       dec dl
       test dl, 0x7f                                            
       jg .space_loop
@@ -226,10 +266,8 @@ fputint32: ; prints an integer to the screen | params: ( int: ecx, seperator: dh
   jz .zero
   test dl, 0x80
   jz .pos
-  mov ah, 0x0e
   mov al, '-'
-  xor bh, bh
-  int 0x10
+  call putch
   .pos:
   xor bl, bl
   mov bh, dh
@@ -245,18 +283,15 @@ fputint32: ; prints an integer to the screen | params: ( int: ecx, seperator: dh
     jz .print
     jmp .loop
   .zero:
-    mov ah, 0x0e
     mov al, '0'
-    int 0x10
+    call putch
     jmp .end
   .print:
     mov dh, bh
-    xor bh, bh
   .print_loop:
     pop ax
-    mov ah, 0x0e
     add al, '0'
-    int 0x10
+    call putch
     dec bl
     test dh, dh
     jz .no_sep
@@ -269,7 +304,7 @@ fputint32: ; prints an integer to the screen | params: ( int: ecx, seperator: dh
     jmp .no_sep
   .sep:
     mov al, dh
-    int 0x10
+    call putch
   .no_sep:
     test bl, bl
     jnz .print_loop
@@ -280,14 +315,101 @@ fputint32: ; prints an integer to the screen | params: ( int: ecx, seperator: dh
     pop edx
     ret
 
+hex2word: ; takes a pointer to a hex string and returns its value | params: ( string: ds:si ) | returns: ( value: cx, invalid: CF )
+  push si
+  push ax
+  call strlen
+  cmp cx, 0
+  jle .inv
+  cmp cx, 4
+  jg .inv
+  mov ax, cx
+  xor cx, cx
+  cmp ax, 1
+  je .one
+  cmp ax, 2
+  je .two
+  cmp ax, 3
+  je .three
+  .four:
+    mov al, [si]
+    call .char2nibble
+    cmp al, -1
+    je .inv
+    shl ax, 12
+    or cx, ax
+    inc si
+  .three:
+    mov al, [si]
+    call .char2nibble
+    cmp al, -1
+    je .inv
+    shl ax, 8
+    or cx, ax
+    inc si
+  .two:
+    mov al, [si]
+    call .char2nibble
+    cmp al, -1
+    je .inv
+    shl ax, 4
+    or cx, ax
+    inc si
+  .one:
+    mov al, [si]
+    call .char2nibble
+    cmp al, -1
+    je .inv
+    or cx, ax
+  clc
+  jmp .end
+  .inv:
+    xor cx, cx
+    stc
+  .end:
+    pop ax
+    pop si
+    ret
+  .char2nibble: ; SUBFUNC takes character and returns hex value | params: ( char: al ) | returns: ( nibble: al ) | invalid character: -1 -> al
+    cmp al, '9'
+    jle .s.le9
+    cmp al, 'F'
+    jle .s.leF
+    cmp al, 'f'
+    jle .s.lef
+    .s.inv:
+      mov al, -1
+      ret
+    .s.le9:
+      cmp al, '0'
+      jge .s.ge0
+      jmp .s.inv
+    .s.leF:
+      cmp al, 'A'
+      jge .s.geA
+      jmp .s.inv
+    .s.lef:
+      cmp al, 'a'
+      jge .s.gea
+      jmp .s.inv
+    .s.ge0:
+      sub al, '0'
+      ret
+    .s.geA:
+      sub al, 0x37
+      ret
+    .s.gea:
+      sub al, 0x57
+      ret
+
+
 gets: ; gets a string from the user | params: ( buffer: es:di, max_count: cx ) | returns: void
   push di
+  push si
   push dx
   push cx
-  push bx
   push ax
 
-  xor bx, bx
   xor dx, dx
   .loop:
     xor ah, ah
@@ -302,35 +424,28 @@ gets: ; gets a string from the user | params: ( buffer: es:di, max_count: cx ) |
     inc dx
 
     stosb
-    mov ah, 0x0e
-    int 0x10
+    call putch
     jmp .loop
   .backspace:
     test dx, dx
     jz .loop
-    mov ah, 0x0e
     mov al, 8
-    int 0x10
+    call putch
     xor al, al
-    int 0x10
+    call putch
     mov al, 8
-    int 0x10
+    call putch
     dec di
     dec dx
     jmp .loop
   .end:
     mov byte es:[di], 0
-
-    mov ah, 0x0e
-    mov al, 10
-    int 0x10
-    mov al, 13
-    int 0x10
-
+    mov si, endl_msg
+    call puts
     pop ax
-    pop bx
     pop cx
     pop dx
+    pop si
     pop di
     ret
 
@@ -385,11 +500,12 @@ clear: ; clears the screen | params: void | returns: void
   push bx
   push ax
   mov ax, 0x0700
-  xor bh, bh
+  mov bh, [color]
   xor cx, cx
   mov dx, 0x184f
   int 0x10
   mov ah, 0x02
+  xor bh, bh
   xor dx, dx
   int 0x10
   pop ax
@@ -418,6 +534,11 @@ help_msg: db "GENERIC:", endl
 clear_cmd: db "clear", 0
 
 echo_cmd: db "echo", 0
+
+color_cmd: db "color", 0
+color: db default_color
+color_msg: db "Usage: color [color]", endl
+           db " - [color] is either 1 or 2 hexadecimal digits representing the 16-bit VGA color attribute (if 1 digit, background is set to 0)", endl, 0
 
 boyfetch_cmd: db "boyfetch", 0
 boyfetch_msg: db "    .@.                       .@-", endl

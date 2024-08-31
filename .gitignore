@@ -1,2 +1,7 @@
+# UNIMPORTANT DIRECTORIES
 build/
 test/
+
+#BOCHS CONFIG FILES
+bochs_config
+bx_enh_dbg.ini
