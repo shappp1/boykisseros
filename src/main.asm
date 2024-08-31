@@ -524,6 +524,7 @@ help_msg: db "GENERIC:", endl
           db "  help - show this message", endl
           db "  clear - clear the screen", endl
           db "  echo - print a message to the screen", endl
+          db "  color - change color of screen"
           db "  boyfetch - show boykisser and OS info UwU", endl
           db "  restart - restart the operating system", endl
           db "FILESYSTEM:", endl
@@ -538,7 +539,8 @@ echo_cmd: db "echo", 0
 color_cmd: db "color", 0
 color: db default_color
 color_msg: db "Usage: color [color]", endl
-           db " - [color] is either 1 or 2 hexadecimal digits representing the 16-bit VGA color attribute (if 1 digit, background is set to 0)", endl, 0
+           db " - [color] is either 1 or 2 hexadecimal digits representing the VGA 16-color", endl
+           db "attribute (if 1 digit, background is set to black)", endl, 0
 
 boyfetch_cmd: db "boyfetch", 0
 boyfetch_msg: db "    .@.                       .@-", endl
