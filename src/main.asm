@@ -524,7 +524,7 @@ help_msg: db "GENERIC:", endl
           db "  help - show this message", endl
           db "  clear - clear the screen", endl
           db "  echo - print a message to the screen", endl
-          db "  color - change color of screen"
+          db "  color - change color of screen", endl
           db "  boyfetch - show boykisser and OS info UwU", endl
           db "  restart - restart the operating system", endl
           db "FILESYSTEM:", endl
