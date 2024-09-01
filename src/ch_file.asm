@@ -12,8 +12,64 @@ ch_ls:
     je .skip
     cmp byte ds:[si], 0
     je .end
-    mov ch, 1
-    mov cl, 8
+  .attrib_loop:
+    mov ah, [si+0x0b]
+    pop ds
+    mov al, '['
+    call putch
+    test ah, 0x10
+    jz .no_dir_attrib
+    mov al, 'D'
+    call putch
+    jmp .dir_attrib
+  .no_dir_attrib:
+    mov al, '-'
+    call putch
+  .dir_attrib
+    test ah, 0x02
+    jz .no_hidden_attrib
+    mov al, 'H'
+    call putch
+    jmp .hidden_attrib
+  .no_hidden_attrib:
+    mov al, '-'
+    call putch
+  .hidden_attrib
+    test ah, 0x04
+    jz .no_system_attrib
+    mov al, 'S'
+    call putch
+    jmp .system_attrib
+  .no_system_attrib:
+    mov al, '-'
+    call putch
+  .system_attrib
+    test ah, 0x01
+    jz .no_ro_attrib
+    mov al, 'R'
+    call putch
+    jmp .ro_attrib
+  .no_ro_attrib:
+    mov al, '-'
+    call putch
+  .ro_attrib
+    test ah, 0x20
+    jz .no_archive_attrib
+    mov al, 'A'
+    call putch
+    jmp .archive_attrib
+  .no_archive_attrib:
+    mov al, '-'
+    call putch
+  .archive_attrib
+    mov al, ']'
+    call putch
+    mov al, ' '
+    call putch
+    push ds
+    mov ds, bx
+  mov ch, 1
+  mov cl, 8
   .name_loop:
     lodsb
     pop ds
@@ -61,12 +117,3 @@ ch_ls:
   .end:
     pop ds
     jmp command_loop
-
-;; SPEC
-;
-; LIST ATTRIBUTES COMMAND
-; FORMAT: [DHSRA]
-; BLANK: -
-;   EXAMPLE: [----A]
-;
-;; END SPEC
