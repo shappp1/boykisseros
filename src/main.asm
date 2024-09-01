@@ -22,6 +22,8 @@ command_loop:
   mov di, command_buffer
   mov cx, 0xFF
   call gets
+  cmp byte [di], 0
+  je command_loop
   mov si, di
   call splitargs
   mov ax, si
@@ -49,6 +51,10 @@ command_loop:
   mov si, restart_cmd
   call cmps
   jc ch_restart
+
+  mov si, electrocute_cmd
+  call cmps
+  jc ch_electrocute
 
   mov si, ls_cmd
   call cmps
@@ -111,6 +117,41 @@ ch_boyfetch:
 ch_restart:
   mov word ss:[0x0472], 0
   jmp 0xf000:0xfff0
+
+ch_electrocute:
+  mov ax, 0x5300
+  xor bx, bx
+  int 0x15 ; INSTALLATION CHECK
+  jc .error
+  cmp ax, 0x101
+  jl .error
+  mov ax, 0x5304
+  xor bx, bx
+  int 0x15 ; DISCONNECT INTERFACE
+  jc .dc_error
+  .no_device:
+    mov ax, 0x5301
+    int 0x15 ; CONNECT REAL MODE INTERFACE
+    jc .error
+    mov al, 0x0e
+    mov cx, 0x101
+    int 0x15 ; SET APM VERSION TO 1.1
+    jc .error
+    mov ax, 0x5308
+    mov bx, 1
+    mov cx, bx
+    int 0x15 ; ENABLE POWER MANAGEMENT ON ALL DEVICES
+    jc .error
+    mov al, 0x07
+    mov cx, 3
+    int 0x15 ; SET POWER TO OFF ON ALL DEVICES
+  .dc_error:
+    cmp ah, 3
+    je .no_device
+  .error:
+    mov si, electrocute_msg
+    call puts
+    jmp command_loop
 
 %include "src/ch_file.asm"
 
@@ -434,6 +475,10 @@ gets: ; gets a string from the user | params: ( buffer: es:di, max_count: cx ) |
     je .end
     cmp al, 3
     je .break
+    cmp al, 40
+    jg .normal
+    add al, 11
+    .normal:
 
     cmp dx, cx
     je .loop
@@ -552,6 +597,7 @@ help_msg: db "! means a command is not yet implemented", endl
           db "  color - change color of screen", endl
           db "  boyfetch - show boykisser and OS info UwU", endl
           db "  restart - restart the operating system", endl
+          db "  electrocute - cutely kill the operating system", endl
           db "FILESYSTEM:", endl
           db "  ls - list contents of current working directory", endl,
           db "! cd - change the current working directory", endl
@@ -597,6 +643,9 @@ boyfetch_msg: db "    .@.                       .@-", endl
               db "          @@@@@@@@@@@@@@@@@@", endl, 0
 
 restart_cmd: db "restart", 0
+
+electrocute_cmd: db "electrocute", 0
+electrocute_msg: db "There was a problem while trying to shutdown!", endl, 0
 
 ls_cmd: db "ls", 0
 ls_msg: db "Directory for ::/", end2l, 0
