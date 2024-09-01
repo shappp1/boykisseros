@@ -475,10 +475,6 @@ gets: ; gets a string from the user | params: ( buffer: es:di, max_count: cx ) |
     je .end
     cmp al, 3
     je .break
-    cmp al, 40
-    jg .normal
-    add al, 11
-    .normal:
 
     cmp dx, cx
     je .loop

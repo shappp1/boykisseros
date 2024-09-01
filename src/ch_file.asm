@@ -17,15 +17,6 @@ ch_ls:
     pop ds
     mov al, '['
     call putch
-    test ah, 0x10
-    jz .no_dir_attrib
-    mov al, 'D'
-    call putch
-    jmp .dir_attrib
-  .no_dir_attrib:
-    mov al, '-'
-    call putch
-  .dir_attrib
     test ah, 0x02
     jz .no_hidden_attrib
     mov al, 'H'
