@@ -61,3 +61,12 @@ ch_ls:
   .end:
     pop ds
     jmp command_loop
+
+;; SPEC
+;
+; LIST ATTRIBUTES COMMAND
+; FORMAT: [DHSRA]
+; BLANK: -
+;   EXAMPLE: [----A]
+;
+;; END SPEC

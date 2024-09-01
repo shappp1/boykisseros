@@ -54,6 +54,10 @@ command_loop:
   call cmps
   jc ch_ls
 
+  mov si, sp_cmd
+  call cmps
+  jc ch_sp
+
   mov si, numtest_cmd
   call cmps
   jc ch_numtest
@@ -109,6 +113,15 @@ ch_restart:
   jmp 0xf000:0xfff0
 
 %include "src/ch_file.asm"
+
+ch_sp:
+  mov si, command_buffer
+  .loop:
+  mov cx, 0xFF
+  call gets
+  test cx, cx
+  jz .loop
+  jmp command_loop
 
 ch_numtest:
   mov si, endl_msg
@@ -402,22 +415,25 @@ hex2word: ; takes a pointer to a hex string and returns its value | params: ( st
       sub al, 0x57
       ret
 
-
-gets: ; gets a string from the user | params: ( buffer: es:di, max_count: cx ) | returns: void
+;; NOTE: if terminated (^C), cx = -1, otherwise cx = 0
+gets: ; gets a string from the user | params: ( buffer: es:di, max_count: cx ) | returns: ( terminated: cx )
   push di
   push si
   push dx
-  push cx
   push ax
 
   xor dx, dx
   .loop:
     xor ah, ah
     int 0x16
-    cmp ah, 0x0e
+    cmp al, 8
     je .backspace
-    cmp ah, 0x1c
+    cmp al, 13
     je .end
+    cmp al, 10
+    je .end
+    cmp al, 3
+    je .break
 
     cmp dx, cx
     je .loop
@@ -438,12 +454,20 @@ gets: ; gets a string from the user | params: ( buffer: es:di, max_count: cx ) |
     dec di
     dec dx
     jmp .loop
+  .break:
+    mov al, '^'
+    call putch
+    mov al, 'C'
+    call putch
+    mov cx, -1
+    jmp .terminated
   .end:
+    xor cx, cx
+  .terminated:
     mov byte es:[di], 0
     mov si, endl_msg
     call puts
     pop ax
-    pop cx
     pop dx
     pop si
     pop di
@@ -520,7 +544,8 @@ welcome_msg: db "Welcome to The Boykisser Operating System (BOS) :3", endl, 0
 prompt: db ":3 ", 0
 
 help_cmd: db "help", 0
-help_msg: db "GENERIC:", endl
+help_msg: db "! means a command is not yet implemented", endl
+          db "GENERIC:", endl
           db "  help - show this message", endl
           db "  clear - clear the screen", endl
           db "  echo - print a message to the screen", endl
@@ -528,9 +553,12 @@ help_msg: db "GENERIC:", endl
           db "  boyfetch - show boykisser and OS info UwU", endl
           db "  restart - restart the operating system", endl
           db "FILESYSTEM:", endl
-          db "  ls - list contents of current working directory", endl
+          db "  ls - list contents of current working directory", endl,
+          db "! cd - change the current working directory", endl
+          db "WRITING:", endl
+          db "  sp - (scratchpad) temporary spot to write stuff down (does not save)", endl
           db "DEBUG:", endl
-          db "  numtest - performs various tests for printing numbers", endl, 0
+          db "  numtest - perform various tests for printing numbers", endl, 0
 
 clear_cmd: db "clear", 0
 
@@ -573,6 +601,8 @@ restart_cmd: db "restart", 0
 ls_cmd: db "ls", 0
 ls_msg: db "Directory for ::/", end2l, 0
 dir_msg: db " <DIR>    ", 0
+
+sp_cmd: db "sp", 0
 
 numtest_cmd: db "numtest", 0
 
