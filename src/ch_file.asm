@@ -4,13 +4,17 @@ ch_ls:
   push ds
   xor bx, bx
   mov ds, bx
-  mov si, directory_buffer + 0x20
+  mov si, directory_buffer
+  test byte [si + 11], 0x08
+  jz .outer_loop
+  .skip:
+    add si, 0x20
   .outer_loop:
-    cmp byte ds:[si], 0x05
+    cmp byte [si], 0x05
     je .skip
-    cmp byte ds:[si], 0xE5
+    cmp byte [si], 0xE5
     je .skip
-    cmp byte ds:[si], 0
+    cmp byte [si], 0
     je .end
   .attrib_loop:
     mov ah, [si+0x0b]
@@ -25,7 +29,7 @@ ch_ls:
   .no_hidden_attrib:
     mov al, '-'
     call putch
-  .hidden_attrib
+  .hidden_attrib:
     test ah, 0x04
     jz .no_system_attrib
     mov al, 'S'
@@ -34,7 +38,7 @@ ch_ls:
   .no_system_attrib:
     mov al, '-'
     call putch
-  .system_attrib
+  .system_attrib:
     test ah, 0x01
     jz .no_ro_attrib
     mov al, 'R'
@@ -43,7 +47,7 @@ ch_ls:
   .no_ro_attrib:
     mov al, '-'
     call putch
-  .ro_attrib
+  .ro_attrib:
     test ah, 0x20
     jz .no_archive_attrib
     mov al, 'A'
@@ -52,7 +56,7 @@ ch_ls:
   .no_archive_attrib:
     mov al, '-'
     call putch
-  .archive_attrib
+  .archive_attrib:
     mov al, ']'
     call putch
     mov al, ' '
@@ -81,7 +85,7 @@ ch_ls:
     xor ch, ch
     jmp .name_loop
   .is_dir:
-    test byte ds:[si], 0x10
+    test byte [si], 0x10
     jz .put_size
     pop ds
     push si
@@ -89,7 +93,7 @@ ch_ls:
     call puts
     jmp .next
   .put_size:
-    mov ecx, ds:[si + 0x11] ; size
+    mov ecx, [si + 0x11] ; size
     mov dx, 10
     pop ds
     push si
@@ -102,9 +106,59 @@ ch_ls:
     mov ds, bx
     add si, 0x15
     jmp .outer_loop
-  .skip:
-    add si, 0x20
-    jmp .outer_loop
   .end:
     pop ds
+    jmp command_loop
+
+ch_cd:
+  push es
+  mov si, ax
+  cmp byte [si], 0
+  je .fail
+  .args_loop:
+    cmp byte [si], ' '
+    jne .args_good
+    call split_args
+    jmp .args_loop
+  .args_good:
+  mov ax, si
+  call split_args
+  mov si, ax
+  call parse_path
+
+  cmp byte [si], '/'
+  je .read_root
+
+  mov di, si
+  call find_file
+  jc .fail
+
+  test byte es:[di + 11], 0x10
+  jz .fail
+
+  mov ax, es:[di + 26]
+  test ax, ax
+  jz .read_root
+
+  mov bx, directory_buffer
+  call read_cluster_chain
+  pop es
+  jmp command_loop
+
+  .read_root:
+    xor ax, ax
+    mov es, ax
+    mov ax, 19 ; FIX HARD CODED
+    mov bx, directory_buffer
+    mov cl, 14 ; FIX HARD CODED
+    mov dl, [0x7c00 + 36]
+    call read_disk
+    jc .fail
+    pop es
+    jmp command_loop
+
+  .fail:
+    pop es
+    mov si, cd_msg
+    call puts
     jmp command_loop

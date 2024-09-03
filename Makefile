@@ -12,7 +12,7 @@ build/main.img: build/boot.bin build/main.bin src/dummy/*
 build/boot.bin: build src/boot.asm
 	nasm -f bin -o build/boot.bin src/boot.asm
 
-build/main.bin: build src/main.asm src/ch_file.asm
+build/main.bin: build src/main.asm src/ch_file.asm src/file_functions.asm
 	nasm -f bin -o build/main.bin src/main.asm
 
 build:

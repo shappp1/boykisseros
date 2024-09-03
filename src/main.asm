@@ -8,6 +8,7 @@
 
 [ORG 0x10000]
 [BITS 16]
+[map all build/main.map]
 
 ;; CODE
 
@@ -22,10 +23,12 @@ command_loop:
   mov di, command_buffer
   mov cx, 0xFF
   call gets
+  cmp cx, -1
+  je command_loop
   cmp byte [di], 0
   je command_loop
   mov si, di
-  call splitargs
+  call split_args
   mov ax, si
 
   mov si, help_cmd
@@ -59,6 +62,10 @@ command_loop:
   mov si, ls_cmd
   call cmps
   jc ch_ls
+
+  mov si, cd_cmd
+  call cmps
+  jc ch_cd
 
   mov si, sp_cmd
   call cmps
@@ -96,10 +103,10 @@ ch_echo:
 ch_color:
   mov si, ax
   call strlen
-  cmp cx, 0
-  jle .inv
+  test cx, cx
+  jz .inv
   cmp cx, 2
-  jg .inv
+  ja .inv
   call hex2word
   jc .inv
   mov [color], cl
@@ -373,10 +380,10 @@ hex2word: ; takes a pointer to a hex string and returns its value | params: ( st
   push si
   push ax
   call strlen
-  cmp cx, 0
-  jle .inv
+  test cx, cx
+  jz .inv
   cmp cx, 4
-  jg .inv
+  ja .inv
   mov ax, cx
   xor cx, cx
   cmp ax, 1
@@ -514,7 +521,7 @@ gets: ; gets a string from the user | params: ( buffer: es:di, max_count: cx ) |
     pop di
     ret
 
-splitargs: ; looks for the first space in a string, changes it to 0, and returns address of character after space | params: ( command: ds:si ) | returns: ( arg: ds:si )
+split_args: ; looks for the first space in a string, changes it to 0, and returns address of character after space | params: ( command: ds:si ) | returns: ( arg: ds:si )
   push ax
 
   .loop:
@@ -579,13 +586,15 @@ clear: ; clears the screen | params: void | returns: void
   pop dx
   ret
 
+%include "src/file_functions.asm"
+
 ;; DATA
 
 welcome_msg: db "Welcome to The Boykisser Operating System (BOS) :3", endl, 0
 prompt: db ":3 ", 0
 
 help_cmd: db "help", 0
-help_msg: db "! means a command is not yet implemented", endl
+help_msg: db "! means a command is not yet implemented or functionality is limited", endl, endl
           db "GENERIC:", endl
           db "  help - show this message", endl
           db "  clear - clear the screen", endl
@@ -646,6 +655,10 @@ electrocute_msg: db "There was a problem while trying to shutdown!", endl, 0
 ls_cmd: db "ls", 0
 ls_msg: db "Directory for ::/", end2l, 0
 dir_msg: db " <DIR>    ", 0
+
+cd_cmd: db "cd", 0
+cd_msg: db "Fucking loser can't even use the cd command properly", endl, 0
+cd_dot: db ".          ", 0
 
 sp_cmd: db "sp", 0
 

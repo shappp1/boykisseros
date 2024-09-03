@@ -74,6 +74,7 @@ main:
   mov bx, directory_buffer
   mov dl, [drive_no]
   call read_disk
+  jc disk_error
 
   ; look for file
   mov di, bx
@@ -98,6 +99,7 @@ main:
   mov bx, FAT_buffer
   mov cx, [sectors_per_FAT]
   call read_disk
+  jc disk_error
 
   ; read file
   mov bx, file_segment
@@ -113,6 +115,7 @@ main:
   mov dl, [drive_no]
   mov cl, [sectors_per_cluster]
   call read_disk
+  jc disk_error
   mov al, cl
   xor ah, ah
   mul word [bytes_per_sector]
@@ -172,9 +175,10 @@ puts: ; prints a string to the screen | params: ( string: ds:si ) | returns: voi
     pop si
     ret
 
-read_disk: ; reads count sectors starting from LBA address | params: ( lba: ax, buffer: es:bx, count: cl, drive_no: dl ) | returns: void
-  push ax
+read_disk: ; reads count sectors starting from LBA address | params: ( lba: ax, buffer: es:bx, count: cl, drive_no: dl ) | returns: ( error: CF set )
+  push dx
   push cx
+  push ax
   
   push cx
   push dx
@@ -192,27 +196,12 @@ read_disk: ; reads count sectors starting from LBA address | params: ( lba: ax, 
   mov dl, al
   pop ax
 
-  mov ah, 2
-  .loop:
-    push ax
-    mov ah, 0x2
-    int 0x13
-    pop ax
-    jnc .end
-    test ah, ah
-    jz disk_error
-    push ax
-    xor ah, ah
-    int 0x13
-    pop ax
-    jc disk_error
-    dec ah
-    jmp .loop
-    
-  .end:
-    pop cx
-    pop ax
-    ret
+  mov ah, 0x02
+  int 0x13
+  pop ax
+  pop cx
+  pop dx
+  ret
 
 ;; DATA
 
