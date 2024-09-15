@@ -89,11 +89,17 @@ read_cluster_chain: ; reads a chain of FAT12 clusters starting from first_cluste
   pop ds
   ret
 
-parse_path: ; takes a path string and splits it into (a) 11 character long 8.3 name | params: ( path: ds:si ) | returns: ( file_name: ds:si ) | ds:[si] is 0 if invalid
-  push es
-  push di
+;; ADDITIONAL INFO
+; 
+; next_in_path is a pointer to the next file in the path after any '/' ( *next_in_path is 0 if at end of path )
+; file_name[0] is 0 if path is invalid or '/' if path starts with '/'
+;
+parse_path: ; takes a path string and splits of an 8.3 file name | params: ( path: ds:si ) | returns: ( next_in_path: ds:si, file_name: es:di )
   push cx
   push bx
+  push ax
+  mov di, .name_buffer
+  mov byte es:[di], 0
   cmp byte [si], 0
   je .end
   cmp byte [si], '/'
@@ -117,25 +123,31 @@ parse_path: ; takes a path string and splits it into (a) 11 character long 8.3 n
     cmp byte [si + bx], '.'
     jne .loop
     ; code for with ext
-  .no_ext:
+  .no_ext: ; bx = 0  di = name_buffer
     inc bx
     cmp byte [si + bx], 0
     jne .no_ext
-    mov cx, ds
-    mov es, cx
-    lea di, [si + bx]
-    mov al, ' '
     mov cx, bx
+    cmp cx, 8
+    jle .no_truncate_name
+    mov cx, 8
+  .no_truncate_name:
+    push si
+    rep movsb
+    pop si
     sub cx, 11
     neg cx
+    mov al, ' '
     rep stosb
-    mov byte [di], 0
+    mov di, .name_buffer
+    lea si, [si + bx + 1]
     jmp .end
   .root:
-    mov byte [si+1], 0
+    mov byte es:[di], '/'
+    inc si
   .end:
+    pop ax
     pop bx
     pop cx
-    pop di
-    pop es
     ret
+  .name_buffer: times 11 db 0

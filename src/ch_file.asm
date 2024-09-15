@@ -126,10 +126,9 @@ ch_cd:
   mov si, ax
   call parse_path
 
-  cmp byte [si], '/'
+  cmp byte es:[di], '/'
   je .read_root
 
-  mov di, si
   call find_file
   jc .fail
 
