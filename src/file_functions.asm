@@ -95,9 +95,11 @@ read_cluster_chain: ; reads a chain of FAT12 clusters starting from first_cluste
 ; file_name[0] is 0 if path is invalid or '/' if path starts with '/'
 ;
 parse_path: ; takes a path string and splits of an 8.3 file name | params: ( path: ds:si ) | returns: ( next_in_path: ds:si, file_name: es:di )
+  push dx
   push cx
   push bx
   push ax
+  mov al, ' '
   mov di, .name_buffer
   mov byte es:[di], 0
   cmp byte [si], 0
@@ -105,14 +107,20 @@ parse_path: ; takes a path string and splits of an 8.3 file name | params: ( pat
   cmp byte [si], '/'
   je .root
   xor bx, bx
+  mov dx, 1
   .slash_loop:
     inc bx
     cmp byte [si + bx], 0
     je .no_slash
+    inc dx
     cmp byte [si + bx], '/'
     jne .slash_loop
     mov byte [si + bx], 0
   .no_slash:
+    add di, 8
+    mov cx, 3
+    rep stosb
+    mov di, .name_buffer
     dec bx
     test bx, bx
     jz .no_ext
@@ -123,6 +131,31 @@ parse_path: ; takes a path string and splits of an 8.3 file name | params: ( pat
     cmp byte [si + bx], '.'
     jne .loop
     ; code for with ext
+    add di, 8
+    mov byte [si + bx], 0
+    mov cx, bx
+  .ext:
+    inc bx
+    cmp byte [si + bx], 0
+    jne .ext
+    push si
+    add si, cx
+    inc si
+    sub cx, bx
+    neg cx
+    cmp cx, 3
+    jle .no_truncate_ext
+    mov cx, 3
+  .no_truncate_ext:
+    mov bx, cx
+    rep movsb
+    mov cx, bx
+    pop si
+    sub cx, 3
+    neg cx
+    rep stosb
+    xor bx, bx
+    mov di, .name_buffer
   .no_ext: ; bx = 0  di = name_buffer
     inc bx
     cmp byte [si + bx], 0
@@ -133,14 +166,15 @@ parse_path: ; takes a path string and splits of an 8.3 file name | params: ( pat
     mov cx, 8
   .no_truncate_name:
     push si
+    mov bx, cx
     rep movsb
+    mov cx, bx
     pop si
-    sub cx, 11
+    sub cx, 8
     neg cx
-    mov al, ' '
     rep stosb
     mov di, .name_buffer
-    lea si, [si + bx + 1]
+    mov si, dx
     jmp .end
   .root:
     mov byte es:[di], '/'
@@ -149,5 +183,6 @@ parse_path: ; takes a path string and splits of an 8.3 file name | params: ( pat
     pop ax
     pop bx
     pop cx
+    pop dx
     ret
-  .name_buffer: times 11 db 0
+  .name_buffer: times 12 db 0
