@@ -5,6 +5,7 @@
 
 %define FAT_buffer 0x7e00
 %define directory_buffer 0x9000
+%define file_buffer 0xAc00
 
 [ORG 0x10000]
 [BITS 16]
@@ -66,6 +67,10 @@ command_loop:
   mov si, cd_cmd
   call cmps
   jc ch_cd
+
+  mov si, type_cmd
+  call cmps
+  jc ch_type
 
   mov si, sp_cmd
   call cmps
@@ -604,8 +609,9 @@ help_msg: db "! means a command is not yet implemented or functionality is limit
           db "  restart - restart the operating system", endl
           db "  electrocute - cutely kill the operating system", endl
           db "FILESYSTEM:", endl
-          db "  ls - list contents of current working directory", endl,
+          db "  ls - list contents of current working directory", endl
           db "! cd - change the current working directory", endl
+          db "! type - print the contents of a file", endl
           db "WRITING:", endl
           db "  sp - (scratchpad) temporary spot to write stuff down (does not save)", endl
           db "DEBUG:", endl
@@ -657,8 +663,9 @@ ls_msg: db "Directory for ::/", end2l, 0
 dir_msg: db " <DIR>    ", 0
 
 cd_cmd: db "cd", 0
-cd_msg: db "Fucking loser can't even use the cd command properly", endl, 0
-cd_dot: db ".          ", 0
+cd_msg: db "Fucking loser can't even use the cd/type command properly", endl, 0
+
+type_cmd: db "type", 0
 
 sp_cmd: db "sp", 0
 

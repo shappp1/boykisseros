@@ -121,40 +121,91 @@ ch_cd:
     call split_args
     jmp .args_loop
   .args_good:
-  mov ax, si
+  push si
   call split_args
-  mov si, ax
-  call parse_path
+  pop si
+  pop es
 
-  cmp byte es:[di], '/'
-  je .read_root
+  .path_loop:
+    push es
+    call parse_path
+
+    cmp byte es:[di], '/'
+    je .read_root
+
+    call find_file
+    jc .fail
+
+    test byte es:[di + 11], 0x10
+    jz .fail
+
+    mov ax, es:[di + 26]
+    test ax, ax
+    jz .read_root
+
+    mov bx, directory_buffer
+    call read_cluster_chain
+    jmp .check_next
+
+    .read_root:
+      xor ax, ax
+      mov es, ax
+      mov ax, 19 ; FIX HARD CODED -> reserved + fat_count * sectors_per_fat
+      mov bx, directory_buffer
+      mov cl, 14 ; FIX HARD CODED (maybe)
+      mov dl, [0x7c00 + 36]
+      call read_disk
+      jc .fail
+    
+    .check_next:
+      pop es
+      cmp byte [si], 0
+      je command_loop
+      jmp .path_loop
+
+  .fail:
+    pop es
+    mov si, cd_msg
+    call puts
+    jmp command_loop
+
+ch_type:
+  push es
+  mov si, ax
+  cmp byte [si], 0
+  je .fail
+  .args_loop:
+    cmp byte [si], ' '
+    jne .args_good
+    call split_args
+    jmp .args_loop
+  .args_good:
+  push si
+  call split_args
+  pop si
+  
+  call parse_path
 
   call find_file
   jc .fail
 
   test byte es:[di + 11], 0x10
-  jz .fail
+  jnz .fail
 
   mov ax, es:[di + 26]
-  test ax, ax
-  jz .read_root
-
-  mov bx, directory_buffer
+  mov bx, file_buffer
   call read_cluster_chain
-  pop es
-  jmp command_loop
 
-  .read_root:
-    xor ax, ax
-    mov es, ax
-    mov ax, 19 ; FIX HARD CODED
-    mov bx, directory_buffer
-    mov cl, 14 ; FIX HARD CODED
-    mov dl, [0x7c00 + 36]
-    call read_disk
-    jc .fail
-    pop es
-    jmp command_loop
+  pop es
+  push ds
+  xor ax, ax
+  mov ds, ax
+  mov si, file_buffer
+  call puts
+  pop ds
+  mov si, endl_msg
+  call puts
+  jmp command_loop
 
   .fail:
     pop es

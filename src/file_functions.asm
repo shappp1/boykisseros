@@ -1,3 +1,12 @@
+;; MEMORY MAP
+;
+; 0x7C00 BOOTSECTOR 512
+; 0x7E00 FAT_BUFFER 4.5K
+; 0x9000 DIR_BUFFER 7K
+; 0xAC00 FILE_BUFFER 21K
+; 0x10000 MAIN_CODE ...
+;
+
 read_disk: ; reads count sectors starting from LBA address | params: ( lba: ax, buffer: es:bx, count: cl, drive_no: dl ) | returns: ( error: CF set )
   push dx
   push cx
@@ -174,7 +183,7 @@ parse_path: ; takes a path string and splits of an 8.3 file name | params: ( pat
     neg cx
     rep stosb
     mov di, .name_buffer
-    mov si, dx
+    add si, dx
     jmp .end
   .root:
     mov byte es:[di], '/'
