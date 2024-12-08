@@ -1,10 +1,10 @@
 ch_ls:
-  mov si, ls_msg
+  mov si, str_ls
   call puts
   push ds
-  xor bx, bx
+  mov bx, DIR_SEGMENT
   mov ds, bx
-  mov si, directory_buffer
+  mov si, DIR_OFFSET
   test byte [si + 11], 0x08
   jz .outer_loop
   .skip:
@@ -89,7 +89,7 @@ ch_ls:
     jz .put_size
     pop ds
     push si
-    mov si, dir_msg
+    mov si, str_dir
     call puts
     jmp .next
   .put_size:
@@ -99,7 +99,7 @@ ch_ls:
     push si
     call fputint32
   .next:
-    mov si, endl_msg
+    mov si, str_endl
     call puts
     pop si
     push ds
@@ -143,17 +143,21 @@ ch_cd:
     test ax, ax
     jz .read_root
 
-    mov bx, directory_buffer
+    push es
+    mov bx, DIR_SEGMENT
+    mov es, bx
+    mov bx, DIR_OFFSET
     call read_cluster_chain
+    pop es
     jmp .check_next
 
     .read_root:
-      xor ax, ax
+      mov ax, DIR_SEGMENT
       mov es, ax
       mov ax, 19 ; FIX HARD CODED -> reserved + fat_count * sectors_per_fat
-      mov bx, directory_buffer
+      mov bx, DIR_OFFSET
       mov cl, 14 ; FIX HARD CODED (maybe)
-      mov dl, [0x7c00 + 36]
+      mov dl, [DRIVE]
       call read_disk
       jc .fail
     
@@ -165,7 +169,7 @@ ch_cd:
 
   .fail:
     pop es
-    mov si, cd_msg
+    mov si, str_cd_type_err
     call puts
     jmp command_loop
 
@@ -193,22 +197,26 @@ ch_type:
   jnz .fail
 
   mov ax, es:[di + 26]
-  mov bx, file_buffer
+  push es
+  mov bx, FILE_SEGMENT
+  mov es, bx
+  mov bx, FILE_OFFSET
   call read_cluster_chain
+  pop es
 
   pop es
   push ds
-  xor ax, ax
+  mov ax, FILE_SEGMENT
   mov ds, ax
-  mov si, file_buffer
+  mov si, FILE_OFFSET
   call puts
   pop ds
-  mov si, endl_msg
+  mov si, str_endl
   call puts
   jmp command_loop
 
   .fail:
     pop es
-    mov si, cd_msg
+    mov si, str_cd_type_err
     call puts
     jmp command_loop

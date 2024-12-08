@@ -17,11 +17,11 @@ read_disk: ; reads count sectors starting from LBA address | params: ( lba: ax, 
   push ds
   xor dx, dx
   mov ds, dx
-  div word [0x7c00 + 24] ; sectors per track
+  div word [SPT] ; sectors per track
   inc dx
   mov cx, dx
   xor dx, dx
-  div word [0x7c00 + 26] ; head count
+  div word [HEADS] ; head count
   mov dh, dl
   mov ch, al
   shl ah, 6
@@ -38,13 +38,13 @@ read_disk: ; reads count sectors starting from LBA address | params: ( lba: ax, 
   pop dx
   ret
 
-find_file: ; looks for file in directory buffer | params: ( 8.3: es:di ) | returns ( entry_address: es:di, not_found: CF set )
+find_file: ; looks for file in directory buffer | params: ( 8.3: es:di ) | returns: ( entry_address: es:di, not_found: CF set )
   push ds
   push si
   push cx
-  xor cx, cx
+  mov cx, DIR_SEGMENT
   mov ds, cx
-  mov si, directory_buffer
+  mov si, DIR_OFFSET
   test byte [si + 11], 0x08
   jz .loop
   .skip:
@@ -78,32 +78,61 @@ find_file: ; looks for file in directory buffer | params: ( 8.3: es:di ) | retur
     pop ds
     ret
 
-read_cluster_chain: ; reads a chain of FAT12 clusters starting from first_cluster | params: ( buffer: es:bx, first_cluster: ax )
+read_cluster_chain: ; reads a chain of FAT12 clusters starting from first_cluster | params: ( buffer: es:bx, first_cluster: ax ) | returns: ( error: CF set )
   push ds
+  push di
   push dx
   push cx
+  push bx
   push ax
-  sub ax, 2
-  xor dx, dx
-  mov ds, dx
-  mov cl, [0x7c00 + 13] ; sectors per cluster
-  mov dl, cl
-  mul dx
-  add ax, 0x21 ; FIX HARDCODED VALUE
-  mov dl, [0x7c00 + 36]
-  call read_disk
-  pop ax
-  pop cx
-  pop dx
-  pop ds
-  ret
+  mov cx, FAT_SEGMENT
+  mov ds, cx
+  .loop:
+    mov di, ax
+    sub ax, 2
+    mov dl, [SPC]
+    xor dh, dh
+    mul dx
+    add ax, [DATA_START]
+    mov cl, [SPC]
+    mov dl, [DRIVE]
+    call read_disk
+    jc .end ; will keep CF to indicate error
+    mov al, cl
+    xor ah, ah
+    mul word [BPS]
+    add bx, ax
+
+    mov ax, di
+    shr di, 1
+    add di, ax
+    mov cx, [di + FAT_OFFSET]
+    test ax, 1
+    jz .even
+    shr cx, 4
+    jmp .check_done
+  .even:
+    and cx, 0xFFF
+  .check_done:
+    mov ax, cx
+    cmp cx, 0xFF8
+    jl .loop
+    clc
+  .end:
+    pop ax
+    pop bx
+    pop cx
+    pop dx
+    pop di
+    pop ds
+    ret
 
 ;; ADDITIONAL INFO
 ; 
 ; next_in_path is a pointer to the next file in the path after any '/' ( *next_in_path is 0 if at end of path )
 ; file_name[0] is 0 if path is invalid or '/' if path starts with '/'
 ;
-parse_path: ; takes a path string and splits of an 8.3 file name | params: ( path: ds:si ) | returns: ( next_in_path: ds:si, file_name: es:di )
+parse_path: ; takes a path string and splits off an 8.3 file name | params: ( path: ds:si ) | returns: ( next_in_path: ds:si, file_name: es:di )
   push dx
   push cx
   push bx

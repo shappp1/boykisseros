@@ -1,150 +1,153 @@
-%define endl 10, 13
-%define FAT_buffer 0x7e00
-%define directory_buffer 0x9000
-%define file_segment 0x1000
+%include "src/defines.asm"
 
+[ORG BASE]
 [BITS 16]
-[ORG 0x7c00]
 
 ;; BPB
 jmp short start
 nop
-oem: db "boys uwu" ; oem (8 bytes)
-bytes_per_sector: dw 0x200 ; bytes per sector
-sectors_per_cluster: db 1 ; sectors per cluster
-reserved_sectors: dw 1 ; reserved sectors
-FAT_count: db 2 ; # of FATs
-root_entries_count: dw 0xe0 ; # of root directory entries
-sector_count: dw 0xb40 ; # of sectors
-media_descriptor: db 0xf0 ; media descriptor type
-sectors_per_FAT: dw 9 ; sectors per FAT
-sectors_per_track: dw 18 ; sectors per track
-head_count: dw 2 ; # of heads/sides
-hidden_sector_count: dd 0 ; # of hidden sectors
-large_sector_count: dd 0 ; large sector count
+db "boys uwu" ; oem (8 bytes)
+dw 0x200 ; bytes per sector
+db 1 ; sectors per cluster
+dw 1 ; reserved sectors
+db 2 ; # of FATs
+dw 0xe0 ; # of root directory entries
+dw 0xb40 ; # of sectors
+db 0xf0 ; media descriptor type
+dw 9 ; sectors per FAT
+dw 18 ; sectors per track
+dw 2 ; # of heads/sides
+dd 0 ; # of hidden sectors
+dd 0 ; large sector count
 
 ;; FAT12
-drive_no: db 0 ; drive number
-reserved: db 0 ; Windows NT flags
-signature: db 0x29 ; signature
-serial_no: db 0x0E, 0x0B, 0x12, 0x07; serial number (4 bytes)
-volume_label: db "BOYKISSEROS" ; volume label (11 bytes)
-identifier: db "FAT12   " ; system identifier (8 bytes)
+db 0 ; drive number
+db 0 ; Windows NT flags
+db 0x29 ; signature
+db 0x0E, 0x0B, 0x12, 0x07; serial number (4 bytes)
+db "BOYKISSEROS" ; volume label (11 bytes)
+db "FAT12   " ; system identifier (8 bytes)
 
 ;; CODE
 
 start:
+  jmp 0:boot
+boot:
+  ; setup segment registers
   xor ax, ax
   mov ds, ax
   mov es, ax
   mov ss, ax
-  mov sp, 0x7c00
+  mov sp, BASE
+  mov bp, sp
 
-  jmp 0:main
-main:
-  ; gets [drive_no], [sectors_per_track], and [head_count] from BIOS
-  mov [drive_no], dl
-  push es
+  ; get some drive parameters
+  mov [DRIVE], dl
   xor di, di
-  mov ah, 0x8
+  mov ah, 0x08
   int 0x13
   jc disk_error
-  pop es
-  and cl, 0x3F
-  xor ch, ch
-  mov [sectors_per_track], cx
+  and cx, 0x3F
+  mov [SPT], cx
   inc dh
-  mov [head_count], dh
+  mov [HEADS], dh
+  xor dx, dx
+
+  ; read FAT
+  mov ax, [RESERVED_SECTORS] ; ax = LBA of FAT
+  mov bx, FAT_SEGMENT
+  mov es, bx
+  mov bx, FAT_OFFSET ; es:bx = FAT buffer location
+  mov cl, [SPF] ; cl (count) = sectors/FAT
+  mov dl, [DRIVE] ; dl = ...drive (who would've guessed)
+  call read_disk
+  jc disk_error
 
   ; read root directory
-  mov ax, [root_entries_count]
+  mov ax, [ROOT_ENTRIES]
   shl ax, 5
-  xor dx, dx
-  div word [bytes_per_sector]
+  div word [BPS]
   test dx, dx
   jz .no_inc
   inc ax
 .no_inc:
-  mov cx, ax
-  mov ax, [sectors_per_FAT]
-  mul byte [FAT_count]
-  add ax, [reserved_sectors]
-  mov bp, ax
-  add bp, cx
-  mov bx, directory_buffer
-  mov dl, [drive_no]
+  mov cl, al ; cl = count = ceil((# root entries)*32/(bytes/sector))
+  mov ax, [SPF]
+  mul byte [FATS]
+  add ax, [RESERVED_SECTORS] ; ax = LBA of root directory
+  xor ch, ch
+  mov bx, ax
+  add bx, cx
+  push bx
+  mov bx, DIR_SEGMENT
+  mov es, bx
+  mov bx, DIR_OFFSET ; es:bx = root directory buffer location
+  mov dl, [DRIVE] ; dl = drive
   call read_disk
   jc disk_error
 
-  ; look for file
+  ; find file in root directory
   mov di, bx
-  xor bx, bx
-.find_file:
+.find_file_loop:
+  cmp byte es:[di], 0
+  jz disk_error ; if name[0] = 0 then we've reached end of root directory
   mov si, file_name
   mov cx, 11
   push di
-  repe cmpsb
+  repe cmpsb ; compare ds:si (file_name) with es:di (root dir entry)
   pop di
   je .found_file
   add di, 32
-  inc bx
-  cmp bx, [root_entries_count]
-  je disk_error
-  jmp .find_file
+  jmp .find_file_loop
 .found_file:
-  mov di, [di + 26]
+  mov di, es:[di+26] ; di = first cluster number
 
-  ; read FAT
-  mov ax, [reserved_sectors]
-  mov bx, FAT_buffer
-  mov cx, [sectors_per_FAT]
-  call read_disk
-  jc disk_error
 
-  ; read file
-  mov bx, file_segment
+  ; read file from disk
+  mov bx, KERNEL_SEGMENT
   mov es, bx
-  xor bx, bx
-.read_file_loop: ; current_cluster: di ; start of data space: bp
+  mov bx, KERNEL_OFFSET ; es:bx = kernel buffer
+.read_file_loop:
   mov ax, di
   sub ax, 2
-  mov dl, [sectors_per_cluster]
+  mov dl, [SPC]
   xor dh, dh
   mul dx
-  add ax, bp
-  mov dl, [drive_no]
-  mov cl, [sectors_per_cluster]
+  add ax, [DATA_START] ; ax = LBA of cluster
+  mov cl, [SPC] ; cl = count = sectors/cluster
+  mov dl, [DRIVE] ; dl = drive
   call read_disk
   jc disk_error
   mov al, cl
   xor ah, ah
-  mul word [bytes_per_sector]
-  add bx, ax
+  mul word [BPS]
+  add bx, ax ; buffer += bytes read
 
   mov si, di
   shr si, 1
-  add si, di
-  add si, FAT_buffer
-  mov ax, [si]
+  add si, di ; si = floor((current cluster) * 1.5)
+  mov ax, FAT_SEGMENT
+  push ds
+  mov ds, ax
+  mov ax, ds:[si + FAT_OFFSET] ; ax = next cluster (kinda)
+  pop ds
+  
   test di, 1
   jz .even
-
   shr ax, 4
-  jmp .check_next_cluster
+  jmp .check_done
 .even:
   and ax, 0xFFF
-.check_next_cluster:
-  cmp ax, 0xFF8
-  jge .read_finish
-
+.check_done:
   mov di, ax
-  jmp .read_file_loop
+  cmp ax, 0xFF8
+  jl .read_file_loop
 
-.read_finish:
-  mov bx, file_segment
+.goto_file:
+  mov bx, KERNEL_SEGMENT
   mov ds, bx
   mov es, bx
-  jmp file_segment:0
+  jmp KERNEL_SEGMENT:KERNEL_OFFSET
 
 disk_error:
   mov si, error_msg
@@ -161,6 +164,7 @@ puts: ; prints a string to the screen | params: ( string: ds:si ) | returns: voi
   push si
   push ax
   push bx
+
   xor bh, bh
   mov ah, 0x0e
   .loop:
@@ -169,6 +173,7 @@ puts: ; prints a string to the screen | params: ( string: ds:si ) | returns: voi
     jz .end
     int 0x10
     jmp .loop
+
   .end:
     pop bx
     pop ax
@@ -180,14 +185,15 @@ read_disk: ; reads count sectors starting from LBA address | params: ( lba: ax, 
   push cx
   push ax
   
+  ; convert LBA to CHS
   push cx
   push dx
   xor dx, dx
-  div word [sectors_per_track]
+  div word [SPT]
   inc dx
   mov cx, dx
   xor dx, dx
-  div word [head_count]
+  div word [HEADS]
   mov dh, dl
   mov ch, al
   shl ah, 6
@@ -196,8 +202,10 @@ read_disk: ; reads count sectors starting from LBA address | params: ( lba: ax, 
   mov dl, al
   pop ax
 
+  ; read disk
   mov ah, 0x02
   int 0x13
+
   pop ax
   pop cx
   pop dx
@@ -206,7 +214,7 @@ read_disk: ; reads count sectors starting from LBA address | params: ( lba: ax, 
 ;; DATA
 
 error_msg: db "Silly little disk error :3", endl, 0
-file_name: db "MAIN    BIN"
+file_name: db "KERNEL  BIN"
 
 times 510-($-$$) db 0
 dw 0xaa55
