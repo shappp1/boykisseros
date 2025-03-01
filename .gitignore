@@ -2,6 +2,5 @@
 build/
 test/
 
-#BOCHS CONFIG FILES
-bochs_config
+# BOCHS FILES
 bx_enh_dbg.ini

@@ -163,7 +163,7 @@ str_boyfetch: db "    .@.                       .@-", endl
               db " .@@@@@@@@@@@  :=@@@@@%:@@@@@@@@@@.", endl
               db " .@@@@@@@@@+@@@@@@@@@@@@@@@@@@@@@@.", endl
               db "  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@     The Boykisser Operating System (BOS)", endl
-              db "  #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#     VERSION: v0.1-ALPHA", endl
+              db "  #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#     VERSION:  v0.1-ALPHA", endl
               db "   @@@@@@@@@@@@@@@@@-   ++.*@@@@@      CODENAME: BEGINNINGS", endl
               db "    @@@.@@.   @@@@@@    @@@+@@@:", endl
               db ".@%-:@@@@@-   @@@@@@.   @@@.@@@@@      SPECS:", endl
@@ -171,8 +171,8 @@ str_boyfetch: db "    .@.                       .@-", endl
               db "   .@-=@=@@@@@@@@@@@@@@@@-%+@@@          File System:  FAT12", endl
               db "  .@@@@@@@@@@%##:%::@@@@@@@@@@@@#", endl
               db "    .  =@@@@@@@@@@@@@@@@@@.            AUTHOR:", endl
-              db "          @=..@@@@@@@@@@                 Name:   Shane Goodrick", endl
-              db "            @@@@@@@@@@@@@                GitHub: https://github.com/shappp1", endl
+              db "          @=..@@@@@@@@@@                 Name:      Shane Goodrick", endl
+              db "            @@@@@@@@@@@@@                GitHub:    https://github.com/shappp1", endl
               db "           @@@@@@@@@@@@@@+               Help From: https://github.com/theridev", endl
               db "            %@@@@@@@@@@@@@.", endl
               db "           .@@@@@@@@@@@@@@@", endl

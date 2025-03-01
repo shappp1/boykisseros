@@ -85,6 +85,7 @@ read_cluster_chain: ; reads a chain of FAT12 clusters starting from first_cluste
   push cx
   push bx
   push ax
+  
   mov cx, FAT_SEGMENT
   mov ds, cx
   .loop:

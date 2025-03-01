@@ -13,9 +13,13 @@ nasm
 qemu
 mtools
 dosfstools
+bochs (optional)
 ```
 
-then build and run together using this command:
+then build and run with:
 ```
-make run
+./compile.sh
+./run.sh
 ```
+
+Note: you may need to do `chmod +x compile.sh run.sh` if it doesn't work
