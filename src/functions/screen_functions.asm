@@ -1,3 +1,4 @@
+; I desperately want to get rid of this
 set_color: ; sets color attribute for entire screen | params: ( colour: bh ) | returns: void
   push ds
   push si

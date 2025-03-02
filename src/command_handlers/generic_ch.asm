@@ -2,6 +2,7 @@ ch_help:  ; TODO please add a convert to uppercase function for the arg
   mov si, ax
   call split_args
   xchg si, ax
+  call to_upper
   mov di, str_generic
   call cmps
   je .generic

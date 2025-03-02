@@ -1,11 +1,13 @@
 putch: ; prints a character to the screen | params: ( char: al ) | returns: void
   push bx
   push ax
+
   mov ah, 0x0e
   xor bx, bx
   int 0x10
   mov bh, [color]
   call set_color
+
   pop ax
   pop bx
   ret
@@ -14,6 +16,7 @@ puts: ; prints a string to the screen | params: ( string: ds:si ) | returns: voi
   push si
   push bx
   push ax
+
   xor bh, bh
   mov ah, 0x0e
   .loop:
@@ -25,6 +28,7 @@ puts: ; prints a string to the screen | params: ( string: ds:si ) | returns: voi
   .end:
     mov bh, [color]
     call set_color
+
     pop ax
     pop bx
     pop si
@@ -84,32 +88,6 @@ gets: ; gets a string from the user | params: ( buffer: es:di, max_count: cx ) |
     call puts
     pop ax
     pop dx
-    pop si
-    pop di
-    ret
-
-cmps: ; compares two strings | params: ( string1: ds:si, string2: es:di ) | returns: ( equal: CF )
-  push di
-  push si
-  push ax
-
-  .loop:
-    mov al, ds:[si]
-    mov ah, es:[di]
-    cmp al, ah
-    jne .not_equal
-    test al, al
-    jz .equal
-    inc si
-    inc di
-    jmp .loop
-  .not_equal:
-    clc
-    jmp .done
-  .equal:
-    stc
-  .done:
-    pop ax
     pop si
     pop di
     ret

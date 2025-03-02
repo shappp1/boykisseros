@@ -14,66 +14,47 @@ command_loop:
   mov si, str_prompt
   call puts
 
+  ; gets(command_buffer, 255)
   mov di, command_buffer
   mov cx, 0xFF
   call gets
+  ; if terminated then jump to command_loop
   cmp cx, -1
   je command_loop
+  ; if empty then jump to command_loop
   cmp byte [di], 0
   je command_loop
+  ; split_args(command_buffer)
   mov si, di
-  call split_args
-  mov ax, si ; ax = pointer to first byte of arguments
+  call split_args ; si = ptr to start of args
+  mov ax, si
+  ; touppers(command_buffer)
+  mov si, di
+  call to_upper
 
-  mov si, cmd_help
-  call cmps
-  jc ch_help
+  xor cx, cx
+  mov dx, str_commands
+  .loop:
+    mov si, dx
+    cmp byte [si], 0
+    je ch_invalid
+    call split_args
+    xchg dx, si ; si = current, dx = next
 
-  mov si, cmd_clear
-  call cmps
-  jc ch_clear
+    mov bx, cx
+    shl bx, 1
+    push word [bx + command_vector]
+    call cmps
+    mov si, dx
+    mov byte [si - 1], " "
+    je .found
+    pop bx
 
-  mov si, cmd_echo
-  call cmps
-  jc ch_echo
+    inc cx
+    jmp .loop
 
-  mov si, cmd_color
-  call cmps
-  jc ch_color
-
-  mov si, cmd_boyfetch
-  call cmps
-  jc ch_boyfetch
-
-  mov si, cmd_restart
-  call cmps
-  jc ch_restart
-
-  mov si, cmd_electrocute
-  call cmps
-  jc ch_electrocute
-
-  mov si, cmd_ls
-  call cmps
-  jc ch_ls
-
-  mov si, cmd_cd
-  call cmps
-  jc ch_cd
-
-  mov si, cmd_type
-  call cmps
-  jc ch_type
-
-  mov si, cmd_sp
-  call cmps
-  jc ch_sp
-
-  mov si, cmd_numtest
-  call cmps
-  jc ch_numtest
-
-  jmp ch_invalid
+  .found:
+    retn
 
 halt:
   cli
@@ -101,21 +82,10 @@ ch_invalid:
 
 ;; COMMANDS
 
-cmd_help: db "help", 0
-cmd_clear: db "clear", 0
-cmd_echo: db "echo", 0
-cmd_color: db "color", 0
-cmd_boyfetch: db "boyfetch", 0
-cmd_restart: db "restart", 0
-cmd_electrocute: db "electrocute", 0
-
-cmd_ls: db "ls", 0
-cmd_cd: db "cd", 0
-cmd_type: db "type", 0
-
-cmd_sp: db "sp", 0
-
-cmd_numtest: db "numtest", 0
+str_commands:
+  db "HELP CLEAR ECHO COLOR BOYFETCH ELECTROCUTE LS CD TYPE SP NUMTEST", 0
+command_vector:
+  dw ch_help, ch_clear, ch_echo, ch_color, ch_boyfetch, ch_electrocute, ch_ls, ch_cd, ch_type, ch_sp, ch_numtest
 
 ;; DATA
 
