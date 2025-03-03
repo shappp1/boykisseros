@@ -1,22 +1,28 @@
-putch: ; prints a character to the screen | params: ( char: al ) | returns: void
+putch: ; void putch(char character) ; prints a character to the screen  
+  push bp
+  mov bp, sp
   push bx
   push ax
 
   mov ah, 0x0e
+  mov al, [bp + 4]
   xor bx, bx
   int 0x10
-  mov bh, [color]
-  call set_color
 
   pop ax
   pop bx
-  ret
+  pop bp
+  ret 2
 
-puts: ; prints a string to the screen | params: ( string: ds:si ) | returns: void
+puts: ; void puts(char *string) ; prints a string to the screen
+  push bp
+  mov bp, sp
   push si
   push bx
   push ax
 
+  mov si, [bp + 4]
+  mov ds, [bp + 6]
   xor bh, bh
   mov ah, 0x0e
   .loop:
@@ -25,21 +31,25 @@ puts: ; prints a string to the screen | params: ( string: ds:si ) | returns: voi
     jz .end
     int 0x10
     jmp .loop
-  .end:
-    mov bh, [color]
-    call set_color
 
+  .end:
     pop ax
     pop bx
     pop si
-    ret
+    pop bp
+    ret 4
 
-;; NOTE: if terminated (^C), cx = -1, otherwise cx = 0
-gets: ; gets a string from the user | params: ( buffer: es:di, max_count: cx ) | returns: ( terminated: cx )
+gets: ; bool gets(char *buffer, uint16 max_count) ; gets a string from the user and returns if terminated (^C)
+  push bp
+  mov bp, sp
+  push es
   push di
-  push si
   push dx
-  push ax
+  push cx
+
+  mov di, [bp + 4]
+  mov es, [bp + 6]
+  mov cx, [bp + 8]
 
   xor dx, dx
   .loop:
@@ -59,38 +69,41 @@ gets: ; gets a string from the user | params: ( buffer: es:di, max_count: cx ) |
     inc dx
 
     stosb
+    push ax
     call putch
     jmp .loop
   .backspace:
     test dx, dx
     jz .loop
-    mov al, 8
+    push 8
     call putch
-    xor al, al
+    push 0
     call putch
-    mov al, 8
+    push 8
     call putch
     dec di
     dec dx
     jmp .loop
   .break:
-    mov al, '^'
+    push '^'
     call putch
-    mov al, 'C'
+    push 'C'
     call putch
-    mov cx, -1
+    mov ax, 1
     jmp .terminated
   .end:
-    xor cx, cx
+    xor ax, ax
   .terminated:
     mov byte es:[di], 0
-    mov si, str_endl
+    push ds
+    push str_endl
     call puts
-    pop ax
+    pop cx
     pop dx
-    pop si
     pop di
-    ret
+    pop es
+    pop bp
+    ret 6
 
 ; NOTE: dh and dl are optional, load with 0 to disable
 ; WARNING: align_right must have enough space to fit entire number, including seperators and signs, otherwise there will be undefined behaviour
@@ -148,8 +161,8 @@ fputint32: ; prints an integer to the screen | params: ( int: ecx, seperator: dh
     sub dl, bl
     test dl, 0x7f
     jle .no_align
-    mov al, ' '
     .space_loop:
+      push ' '
       call putch
       dec dl
       test dl, 0x7f                                            
@@ -159,7 +172,7 @@ fputint32: ; prints an integer to the screen | params: ( int: ecx, seperator: dh
   jz .zero
   test dl, 0x80
   jz .pos
-  mov al, '-'
+  push '-'
   call putch
   .pos:
   xor bl, bl
@@ -176,7 +189,7 @@ fputint32: ; prints an integer to the screen | params: ( int: ecx, seperator: dh
     jz .print
     jmp .loop
   .zero:
-    mov al, '0'
+    push '0'
     call putch
     jmp .end
   .print:
@@ -184,6 +197,7 @@ fputint32: ; prints an integer to the screen | params: ( int: ecx, seperator: dh
   .print_loop:
     pop ax
     add al, '0'
+    push ax
     call putch
     dec bl
     test dh, dh
@@ -197,6 +211,7 @@ fputint32: ; prints an integer to the screen | params: ( int: ecx, seperator: dh
     jmp .no_sep
   .sep:
     mov al, dh
+    push ax
     call putch
   .no_sep:
     test bl, bl

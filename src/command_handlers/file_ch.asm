@@ -1,5 +1,6 @@
 ch_ls:
-  mov si, str_ls
+  push ds
+  push str_ls
   call puts
   push ds
   mov bx, DIR_SEGMENT
@@ -19,47 +20,47 @@ ch_ls:
   .attrib_loop:
     mov ah, [si+0x0b]
     pop ds
-    mov al, '['
+    push '['
     call putch
     test ah, 0x02
     jz .no_hidden_attrib
-    mov al, 'H'
+    push 'H'
     call putch
     jmp .hidden_attrib
   .no_hidden_attrib:
-    mov al, '-'
+    push '-'
     call putch
   .hidden_attrib:
     test ah, 0x04
     jz .no_system_attrib
-    mov al, 'S'
+    push 'S'
     call putch
     jmp .system_attrib
   .no_system_attrib:
-    mov al, '-'
+    push '-'
     call putch
   .system_attrib:
     test ah, 0x01
     jz .no_ro_attrib
-    mov al, 'R'
+    push 'R'
     call putch
     jmp .ro_attrib
   .no_ro_attrib:
-    mov al, '-'
+    push '-'
     call putch
   .ro_attrib:
     test ah, 0x20
     jz .no_archive_attrib
-    mov al, 'A'
+    push 'A'
     call putch
     jmp .archive_attrib
   .no_archive_attrib:
-    mov al, '-'
+    push '-'
     call putch
   .archive_attrib:
-    mov al, ']'
+    push ']'
     call putch
-    mov al, ' '
+    push ' '
     call putch
     push ds
     mov ds, bx
@@ -68,6 +69,7 @@ ch_ls:
   .name_loop:
     lodsb
     pop ds
+    push ax
     call putch
     push ds
     mov ds, bx
@@ -76,8 +78,8 @@ ch_ls:
     jg .name_loop
     test ch, ch
     jz .is_dir
-    mov al, ' '
     pop ds
+    push ' '
     call putch
     push ds
     mov ds, bx
@@ -89,7 +91,8 @@ ch_ls:
     jz .put_size
     pop ds
     push si
-    mov si, str_dir
+    push ds
+    push str_dir
     call puts
     jmp .next
   .put_size:
@@ -99,7 +102,8 @@ ch_ls:
     push si
     call fputint32
   .next:
-    mov si, str_endl
+    push ds
+    push str_endl
     call puts
     pop si
     push ds
@@ -118,12 +122,15 @@ ch_cd:
   .args_loop:
     cmp byte [si], ' '
     jne .args_good
+    push ds
+    push si
     call split_args
+    mov si, ax
     jmp .args_loop
   .args_good:
+  push ds
   push si
   call split_args
-  pop si
   pop es
 
   .path_loop:
@@ -169,7 +176,8 @@ ch_cd:
 
   .fail:
     pop es
-    mov si, str_cd_type_err
+    push ds
+    push str_cd_type_err
     call puts
     jmp command_loop
 
@@ -181,12 +189,15 @@ ch_type:
   .args_loop:
     cmp byte [si], ' '
     jne .args_good
+    push ds
+    push si
     call split_args
+    mov si, ax
     jmp .args_loop
   .args_good:
+  push ds
   push si
   call split_args
-  pop si
   
   call parse_path
 
@@ -208,15 +219,18 @@ ch_type:
   push ds
   mov ax, FILE_SEGMENT
   mov ds, ax
-  mov si, FILE_OFFSET
+  push ds
+  push FILE_OFFSET
   call puts
   pop ds
-  mov si, str_endl
+  push ds
+  push str_endl
   call puts
   jmp command_loop
 
   .fail:
     pop es
-    mov si, str_cd_type_err
+    push ds
+    push str_cd_type_err
     call puts
     jmp command_loop

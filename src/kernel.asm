@@ -7,61 +7,82 @@
 ;; CODE
 
 call clear
-mov si, str_welcome
+push ds
+push str_welcome
 call puts
 
 command_loop:
-  mov si, str_prompt
+  push ds
+  push str_prompt
   call puts
 
+  mov si, command_buffer
+
   ; gets(command_buffer, 255)
-  mov di, command_buffer
-  mov cx, 0xFF
+  push 0xFF
+  push ds
+  push si
   call gets
+
   ; if terminated then jump to command_loop
-  cmp cx, -1
-  je command_loop
+  test ax, ax
+  jnz command_loop
+
   ; if empty then jump to command_loop
-  cmp byte [di], 0
+  cmp byte [si], 0
   je command_loop
+
   ; split_args(command_buffer)
-  mov si, di
-  call split_args ; si = ptr to start of args
-  mov ax, si
+  push ds
+  push si
+  call split_args
+  mov bx, ax ; bx = &args
+
   ; touppers(command_buffer)
-  mov si, di
+  push ds
+  push si
   call to_upper
 
   xor cx, cx
-  mov dx, str_commands
+  mov di, str_commands
   .loop:
-    mov si, dx
-    cmp byte [si], 0
+    cmp byte [di], 0
     je ch_invalid
+    
+    push ds
+    push di
     call split_args
-    xchg dx, si ; si = current, dx = next
+    mov dx, ax ; dx = &next
 
-    mov bx, cx
-    shl bx, 1
-    push word [bx + command_vector]
+    push ds
+    push di
+    push ds
+    push si
     call cmps
-    mov si, dx
-    mov byte [si - 1], " "
-    je .found
-    pop bx
 
+    mov di, dx
+    cmp byte [di], 0
+    je .no_restore
+    ; replace 0 with space in str_commands
+    mov byte [di - 1], ' '
+  .no_restore:
+    test ax, ax
+    jnz .found
+
+    inc cx
     inc cx
     jmp .loop
 
   .found:
-    retn
+    mov di, cx
+    jmp [command_vector + di]
 
 halt:
   cli
   hlt
   jmp halt
 
-;; COMMAND HANDLERS
+;; COMMAND VECTORS
 
 %include "src/command_handlers/generic_ch.asm"
 %include "src/command_handlers/power_ch.asm"
@@ -69,27 +90,30 @@ halt:
 %include "src/command_handlers/debug_ch.asm"
 
 ch_invalid:
-  mov si, str_invalid
+  push ds
+  push str_invalid
   call puts
   jmp command_loop
 
 ;; FUNCTIONS
+;    Arguments to a function are pushed to the stack in reverse order
+;    All registers are callee saved
+;    Stack is cleaned by the callee
+;    1-byte data types are pushed as 2-bytes, the highest byte is ignored
+;    for pointers, push segment first, then offset
 
 %include "src/functions/IO_functions.asm"
 %include "src/functions/string_functions.asm"
 %include "src/functions/screen_functions.asm"
 %include "src/functions/file_functions.asm"
 
-;; COMMANDS
+;; READONLY DATA
 
 str_commands:
-  db "HELP CLEAR ECHO COLOR BOYFETCH ELECTROCUTE LS CD TYPE SP NUMTEST", 0
+  db "HELP CLEAR ECHO COLOR BOYFETCH RESTART ELECTROCUTE LS CD TYPE SP NUMTEST", 0
 command_vector:
-  dw ch_help, ch_clear, ch_echo, ch_color, ch_boyfetch, ch_electrocute, ch_ls, ch_cd, ch_type, ch_sp, ch_numtest
+  dw ch_help, ch_clear, ch_echo, ch_color, ch_boyfetch, ch_restart, ch_electrocute, ch_ls, ch_cd, ch_type, ch_sp, ch_numtest
 
-;; DATA
-
-color: db DEFAULT_COLOR
 str_prompt: db ":3 ", 0
 str_welcome: db "Welcome to The Boykisser Operating System (BOS) :3", endl, 0
 
@@ -105,13 +129,12 @@ str_help_generic: db "GENERIC | page 1 of 1", endl
                   db "  help - show this message", endl
                   db "  clear - clear the screen", endl
                   db "  echo - print a message to the screen", endl
-                  db "  color - change color of screen", endl
+                  db "! color - change color of screen", endl
                   db "  boyfetch - show boykisser and OS info UwU", endl
                   db "  restart - restart the operating system", endl
                   db "  electrocute - cutely kill the operating system", endl, 0
 
-str_help_file: db "! means a command is not yet implemented or functionality is limited", endl
-               db "FILE | page 1 of 1", endl
+str_help_file: db "FILE | page 1 of 1", endl
                db "  ls - list contents of current working directory", endl
                db "! cd - change the current working directory", endl
                db "! type - print the contents of a file", endl, 0
@@ -122,9 +145,10 @@ str_help_writing: db "WRITING | page 1 of 1", endl
 str_help_debug: db "DEBUG | page 1 of 1", endl
                 db "  numtest - perform various tests for printing numbers", endl, 0
 
-str_color: db "Usage: color [color]", endl
-           db " - [color] is either 1 or 2 hexadecimal digits representing the VGA 16-color", endl
-           db "attribute (if 1 digit, background is set to black)", endl, 0
+str_color: db "The color command is currently unavailable", endl, 0
+; str_color: db "Usage: color [color]", endl
+;            db " - [color] is either 1 or 2 hexadecimal digits representing the VGA 16-color", endl
+;            db "attribute (if 1 digit, background is set to black)", endl, 0
 
 str_boyfetch: db "    .@.                       .@-", endl
               db "   .@@@@.                   .@@@@.", endl
@@ -161,6 +185,10 @@ str_cd_type_err: db "Fucking loser can't even use the cd/type command properly",
 
 str_invalid: db "Uh oh you used an invalid command >:3", endl, 0
 str_endl: db endl, 0
+
+;; READ/WRITE DATA
+
+; color: db DEFAULT_COLOR
 
 path_buffer: times 128 db 0
 command_buffer: times 256 db 0

@@ -33,6 +33,7 @@ ch_electrocute:
     cmp ah, 3
     je .no_device
   .error:
-    mov si, str_electrocute
+    push ds
+    push str_electrocute
     call puts
     jmp command_loop

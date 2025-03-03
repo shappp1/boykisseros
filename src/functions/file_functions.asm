@@ -17,11 +17,11 @@ read_disk: ; reads count sectors starting from LBA address | params: ( lba: ax, 
   push ds
   xor dx, dx
   mov ds, dx
-  div word [SPT] ; sectors per track
+  div word fs:[SPT] ; sectors per track
   inc dx
   mov cx, dx
   xor dx, dx
-  div word [HEADS] ; head count
+  div word fs:[HEADS] ; head count
   mov dh, dl
   mov ch, al
   shl ah, 6
@@ -91,17 +91,17 @@ read_cluster_chain: ; reads a chain of FAT12 clusters starting from first_cluste
   .loop:
     mov di, ax
     sub ax, 2
-    mov dl, [SPC]
+    mov dl, fs:[SPC]
     xor dh, dh
     mul dx
-    add ax, [DATA_START]
-    mov cl, [SPC]
-    mov dl, [DRIVE]
+    add ax, fs:[DATA_START]
+    mov cl, fs:[SPC]
+    mov dl, fs:[DRIVE]
     call read_disk
     jc .end ; will keep CF to indicate error
     mov al, cl
     xor ah, ah
-    mul word [BPS]
+    mul word fs:[BPS]
     add bx, ax
 
     mov ax, di

@@ -37,6 +37,7 @@ boot:
   xor ax, ax
   mov ds, ax
   mov es, ax
+  mov fs, ax ; use fs for all header defines
   mov ss, ax
   mov sp, BASE
   mov bp, sp

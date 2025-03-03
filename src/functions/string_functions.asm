@@ -1,7 +1,15 @@
-cmps: ; compares two strings | params: ( string1: ds:si, string2: es:di ) | returns: ( equal: CF )
+cmps: ; bool cmps(char *string1, char *string2) ; compares two strings and returns if they are equal
+  push bp
+  mov bp, sp
+  push es
   push di
+  push ds
   push si
-  push ax
+
+  mov di, [bp + 4]
+  mov es, [bp + 6]
+  mov si, [bp + 8]
+  mov ds, [bp + 10]
 
   .loop:
     mov al, ds:[si]
@@ -14,19 +22,27 @@ cmps: ; compares two strings | params: ( string1: ds:si, string2: es:di ) | retu
     inc di
     jmp .loop
   .not_equal:
-    clc
+    xor ax, ax
     jmp .done
   .equal:
-    stc
+    mov ax, 1
   .done:
-    pop ax
     pop si
+    pop ds
     pop di
-    ret
+    pop es
+    pop bp
+    ret 8
 
-to_upper: ; converts a string to uppercase | params: ( string: ds:si ) | returns: void
+to_upper: ; void to_upper(char *string) ; converts a string to uppercase
+  push bp
+  mov bp, sp
+  push ds
   push si
   push ax
+
+  mov si, [bp + 4]
+  mov ds, [bp + 6]
 
   .loop:
     lodsb
@@ -46,7 +62,9 @@ to_upper: ; converts a string to uppercase | params: ( string: ds:si ) | returns
   .end:
     pop ax
     pop si
-    ret
+    pop ds
+    pop bp
+    ret 4
 
 strlen: ; gets the length of a string | params: ( string: ds:si ) | returns ( length: cx )
   push si
@@ -146,8 +164,15 @@ hex_to_word: ; takes a pointer to a hex string and returns its value | params: (
       sub al, 0x57
       ret
 
-split_args: ; looks for the first space in a string, changes it to 0, and returns address of character after space | params: ( command: ds:si ) | returns: ( arg: ds:si )
-  push ax
+; looks for the first space in string, changes it to 0, and return offset of character after space in the segment that was pushed
+split_args: ; char *split_args(char *string) ; looks for the first space in a string, changes it to 0, and returns address of character after space
+  push bp
+  mov bp, sp
+  push ds
+  push si
+
+  mov si, [bp + 4]
+  mov ds, [bp + 6]
 
   .loop:
     lodsb
@@ -162,5 +187,8 @@ split_args: ; looks for the first space in a string, changes it to 0, and return
   .space:
     mov byte ds:[si-1], 0
   .end:
-    pop ax
-    ret
+    mov ax, si
+    pop si
+    pop ds
+    pop bp
+    ret 4
