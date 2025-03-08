@@ -39,7 +39,7 @@ puts: ; void puts(char *string) ; prints a string to the screen
     pop bp
     ret 4
 
-gets: ; bool gets(char *buffer, uint16 max_count) ; gets a string from the user and returns if terminated (^C)
+gets: ; bool gets(char *buffer, uint16 max_count) ; gets a string from the user and returns true if terminated (^C)
   push bp
   mov bp, sp
   push es
@@ -105,13 +105,25 @@ gets: ; bool gets(char *buffer, uint16 max_count) ; gets a string from the user 
     pop bp
     ret 6
 
-; NOTE: dh and dl are optional, load with 0 to disable
-; WARNING: align_right must have enough space to fit entire number, including seperators and signs, otherwise there will be undefined behaviour
-fputint32: ; prints an integer to the screen | params: ( int: ecx, seperator: dh, align_right: dl & 0x7F, is_signed: dl & 0x80 ) | returns: void
+; NOTE: seperator and right_align are optional, load with 0 to disable
+; WARNING: right_align must have enough space to fit entire number, including seperators and signs, otherwise there will be undefined behaviour
+
+fputint32: ; void fputint32(int32 n, char seperator, uint8 right_align, bool signed) ; prints an integer to the screen
+  push bp
+  mov bp, sp
   push edx
   push ecx
   push bx
   push eax
+
+  mov ecx, [bp+4]
+  mov dh, [bp+8]
+  mov dl, [bp+10]
+  and dl, 0x7F
+  cmp byte [bp+12], 0
+  je ._unsigned
+  or dl, 0x80
+._unsigned:
 
   test dl, 0x80
   jz .unsigned
@@ -221,4 +233,5 @@ fputint32: ; prints an integer to the screen | params: ( int: ecx, seperator: dh
     pop bx
     pop ecx
     pop edx
-    ret
+    pop bp
+    ret 10

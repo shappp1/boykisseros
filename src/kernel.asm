@@ -97,10 +97,11 @@ ch_invalid:
 
 ;; FUNCTIONS
 ;    Arguments to a function are pushed to the stack in reverse order
-;    All registers are callee saved
+;    All registers are callee saved (unless function is non-void, where ax is set to return value)
 ;    Stack is cleaned by the callee
 ;    1-byte data types are pushed as 2-bytes, the highest byte is ignored
 ;    for pointers, push segment first, then offset
+;    for bools, 0 is false, and any non-zero value is true (typically 1)
 
 %include "src/functions/IO_functions.asm"
 %include "src/functions/string_functions.asm"

@@ -13,31 +13,46 @@ ch_numtest:
 
   mov ecx, 134
   mov dx, 0x008f
+  push 1
+  push 15
+  push 0
+  push ecx
   call fputint32
   push ds
   push si
   call puts
 
-  mov ecx, -3514
+  push 1
+  push 15
+  push 0
+  push dword -3514
   call fputint32
   push ds
   push si
   call puts
 
-  mov dh, ','
+  push 1
+  push 15
+  push ','
+  push dword -3514
   call fputint32
   push ds
   push si
   call puts
 
-  mov dl, 0x0f
+  push 0
+  push 15
+  push ','
+  push dword -3514
   call fputint32
   push ds
   push si
   call puts
   
-  mov ecx, 1234
-  xor dl, dl
+  push 0
+  push 0
+  push ','
+  push dword 1234
   call fputint32
   push ds
   push si

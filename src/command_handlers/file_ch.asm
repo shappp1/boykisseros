@@ -100,6 +100,10 @@ ch_ls:
     mov dx, 10
     pop ds
     push si
+    push 0
+    push 10
+    push 0
+    push ecx
     call fputint32
   .next:
     push ds
