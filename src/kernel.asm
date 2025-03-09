@@ -25,7 +25,7 @@ command_loop:
   call gets
 
   ; if terminated then jump to command_loop
-  test ax, ax
+  test al, al
   jnz command_loop
 
   ; if empty then jump to command_loop
@@ -66,7 +66,7 @@ command_loop:
     ; replace 0 with space in str_commands
     mov byte [di - 1], ' '
   .no_restore:
-    test ax, ax
+    test al, al
     jnz .found
 
     inc cx
@@ -97,11 +97,14 @@ ch_invalid:
 
 ;; FUNCTIONS
 ;    Arguments to a function are pushed to the stack in reverse order
-;    All registers are callee saved (unless function is non-void, where ax is set to return value)
+;    All registers are callee saved unless they are being used to return a value
 ;    Stack is cleaned by the callee
 ;    1-byte data types are pushed as 2-bytes, the highest byte is ignored
 ;    for pointers, push segment first, then offset
 ;    for bools, 0 is false, and any non-zero value is true (typically 1)
+;    1-byte values are returned in al
+;    2-byte values are returned in ax
+;    pointers (and 4-byte values) are returned in dx:ax
 
 %include "src/functions/IO_functions.asm"
 %include "src/functions/string_functions.asm"

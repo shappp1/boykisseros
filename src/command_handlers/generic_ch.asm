@@ -12,7 +12,7 @@ ch_help:  ; TODO please add a convert to uppercase function for the arg
   push ds
   push bx
   call cmps
-  test ax, ax
+  test al, al
   jnz .generic
 
   push es
@@ -20,7 +20,7 @@ ch_help:  ; TODO please add a convert to uppercase function for the arg
   push ds
   push bx
   call cmps
-  test ax, ax
+  test al, al
   jnz .file
 
   push es
@@ -28,7 +28,7 @@ ch_help:  ; TODO please add a convert to uppercase function for the arg
   push ds
   push bx
   call cmps
-  test ax, ax
+  test al, al
   jnz .writing
   
   push es
@@ -36,7 +36,7 @@ ch_help:  ; TODO please add a convert to uppercase function for the arg
   push ds
   push bx
   call cmps
-  test ax, ax
+  test al, al
   jnz .debug
   
   ; else print help help

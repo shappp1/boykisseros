@@ -4,7 +4,7 @@ ch_sp:
     push ds
     push command_buffer
     call gets
-    test ax, ax
+    test al, al
     jz .loop
   jmp command_loop
 

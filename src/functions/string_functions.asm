@@ -6,13 +6,13 @@ cmps: ; bool cmps(char *string1, char *string2) ; compares two strings and retur
   push ds
   push si
 
-  mov di, [bp + 4]
-  mov es, [bp + 6]
-  mov si, [bp + 8]
-  mov ds, [bp + 10]
+  mov di, [bp+4]
+  mov es, [bp+6]
+  mov si, [bp+8]
+  mov ds, [bp+10]
 
   .loop:
-    mov al, ds:[si]
+    mov al, [si]
     mov ah, es:[di]
     cmp al, ah
     jne .not_equal
@@ -41,8 +41,8 @@ to_upper: ; void to_upper(char *string) ; converts a string to uppercase
   push si
   push ax
 
-  mov si, [bp + 4]
-  mov ds, [bp + 6]
+  mov si, [bp+4]
+  mov ds, [bp+6]
 
   .loop:
     lodsb
@@ -56,7 +56,7 @@ to_upper: ; void to_upper(char *string) ; converts a string to uppercase
     jg .loop
     ; subtract 0x20 to convert lowercase character to uppercase
     sub al, 0x20
-    mov ds:[si - 1], al
+    mov [si - 1], al
     jmp .loop
     
   .end:
@@ -177,30 +177,35 @@ strlen: ; uint16 strlen(char *string) ; returns the length of a string
 ;       sub al, 0x57
 ;       ret
 
-; looks for the first space in string, changes it to 0, and return offset of character after space in the segment that was pushed
+
+; looks for the first space in string, changes it to 0, and return offset of first non-space character after space(s) in the same segment as string
+; returns the offset of '\0' if end of string is found
 split_args: ; char *split_args(char *string) ; looks for the first space in a string, changes it to 0, and returns address of character after space
   push bp
   mov bp, sp
   push ds
   push si
 
-  mov si, [bp + 4]
-  mov ds, [bp + 6]
+  mov si, [bp+4]
+  mov ds, [bp+6]
 
   .loop:
     lodsb
     cmp al, ' '
     je .space
     test al, al
-    jz .zero
+    jz .end
     jmp .loop
-  .zero:
-    dec si
-    jmp .end
+
   .space:
-    mov byte ds:[si-1], 0
+    mov byte [si-1], 0
+    lodsb
+    cmp al, ' '
+    je .space
+
   .end:
     mov ax, si
+    dec ax
     pop si
     pop ds
     pop bp

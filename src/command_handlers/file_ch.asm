@@ -119,8 +119,9 @@ ch_ls:
     jmp command_loop
 
 ch_cd:
+  ; should be able to get rid of this, as split_args functionality was changed
   push es
-  mov si, ax
+  mov si, bx
   cmp byte [si], 0
   je .fail
   .args_loop:
@@ -158,19 +159,27 @@ ch_cd:
     mov bx, DIR_SEGMENT
     mov es, bx
     mov bx, DIR_OFFSET
+    push ax
+    push es
+    push bx
     call read_cluster_chain
     pop es
     jmp .check_next
 
     .read_root:
-      mov ax, DIR_SEGMENT
-      mov es, ax
-      mov ax, 19 ; FIX HARD CODED -> reserved + fat_count * sectors_per_fat
-      mov bx, DIR_OFFSET
-      mov cl, 14 ; FIX HARD CODED (maybe)
-      mov dl, [DRIVE]
+      mov ax, fs:[SPF]
+      mul byte fs:[FATS]
+      add ax, fs:[RESERVED_SECTORS]
+      mov cx, fs:[DATA_START]
+      sub cx, ax
+      push word fs:[DRIVE]
+      push cx
+      push DIR_SEGMENT
+      push DIR_OFFSET
+      push ax
       call read_disk
-      jc .fail
+      test al, al
+      jz .fail
     
     .check_next:
       pop es
@@ -187,7 +196,7 @@ ch_cd:
 
 ch_type:
   push es
-  mov si, ax
+  mov si, bx
   cmp byte [si], 0
   je .fail
   .args_loop:
@@ -216,6 +225,9 @@ ch_type:
   mov bx, FILE_SEGMENT
   mov es, bx
   mov bx, FILE_OFFSET
+  push ax
+  push es
+  push bx
   call read_cluster_chain
   pop es
 

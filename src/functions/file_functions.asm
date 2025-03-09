@@ -7,36 +7,42 @@
 ; 0x10000 MAIN_CODE ...
 ;
 
-read_disk: ; reads count sectors starting from LBA address | params: ( lba: ax, buffer: es:bx, count: cl, drive_no: dl ) | returns: ( error: CF set )
+read_disk: ; bool read_disk(uint16 lba, char *buffer, uint8 count, uint8 drive_no) ; reads count sectors starting from LBA address and returns true if successful and false if error
+  push bp
+  mov bp, sp
   push dx
   push cx
-  push ax
-  
-  push cx
-  push dx
-  push ds
+  push es
+  push bx
+
+  mov ax, [bp+4]
   xor dx, dx
-  mov ds, dx
-  div word fs:[SPT] ; sectors per track
+  div word fs:[SPT] ; ax = LBA / SPT
   inc dx
-  mov cx, dx
+  mov cx, dx ; cl[0..5] = sector
   xor dx, dx
-  div word fs:[HEADS] ; head count
+  div word fs:[HEADS] ; ax = cylinder, dx = head
   mov dh, dl
   mov ch, al
   shl ah, 6
   or cl, ah
-  pop ds
-  pop ax
-  mov dl, al
-  pop ax
 
+  mov al, [bp+10]
+  mov bx, [bp+6]
+  mov es, [bp+8]
+  mov dl, [bp+12]
   mov ah, 0x02
-  int 0x13
-  pop ax
-  pop cx
-  pop dx
-  ret
+  int 0x13 ; al = count, cx = cylinder/sector, dh = head, dl = drive, es:bx = buffer
+  mov ax, 0
+  jc .end ; ax = 0 if error
+  inc ax ; ax = 1, success
+  .end:
+    pop bx
+    pop es
+    pop cx
+    pop dx
+    pop bp
+    ret 10
 
 find_file: ; looks for file in directory buffer | params: ( 8.3: es:di ) | returns: ( entry_address: es:di, not_found: CF set )
   push ds
@@ -78,14 +84,20 @@ find_file: ; looks for file in directory buffer | params: ( 8.3: es:di ) | retur
     pop ds
     ret
 
-read_cluster_chain: ; reads a chain of FAT12 clusters starting from first_cluster | params: ( buffer: es:bx, first_cluster: ax ) | returns: ( error: CF set )
+read_cluster_chain: ; bool read_cluster_chain(char *buffer, uint16 first_cluster_no) ; reads a chain of FAT12 clusters starting from first_cluster | params: ( buffer: es:bx, first_cluster: ax ) | returns: ( error: CF set )
+  push bp
+  mov bp, sp
+  push es
   push ds
   push di
   push dx
   push cx
   push bx
-  push ax
   
+  mov bx, [bp+4]
+  mov es, [bp+6]
+  mov ax, [bp+8]
+
   mov cx, FAT_SEGMENT
   mov ds, cx
   .loop:
@@ -97,8 +109,14 @@ read_cluster_chain: ; reads a chain of FAT12 clusters starting from first_cluste
     add ax, fs:[DATA_START]
     mov cl, fs:[SPC]
     mov dl, fs:[DRIVE]
+    push dx
+    push cx
+    push es
+    push bx
+    push ax
     call read_disk
-    jc .end ; will keep CF to indicate error
+    test al, al
+    jz .end ; will keep al = false to indicate error
     mov al, cl
     xor ah, ah
     mul word fs:[BPS]
@@ -118,21 +136,19 @@ read_cluster_chain: ; reads a chain of FAT12 clusters starting from first_cluste
     mov ax, cx
     cmp cx, 0xFF8
     jl .loop
-    clc
+    mov ax, 1
   .end:
-    pop ax
     pop bx
     pop cx
     pop dx
     pop di
     pop ds
-    ret
-
-;; ADDITIONAL INFO
-; 
+    pop es
+    pop bp
+    ret 6
+ 
 ; next_in_path is a pointer to the next file in the path after any '/' ( *next_in_path is 0 if at end of path )
 ; file_name[0] is 0 if path is invalid or '/' if path starts with '/'
-;
 parse_path: ; takes a path string and splits off an 8.3 file name | params: ( path: ds:si ) | returns: ( next_in_path: ds:si, file_name: es:di )
   push dx
   push cx

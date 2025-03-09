@@ -5,7 +5,7 @@ putch: ; void putch(char character) ; prints a character to the screen
   push ax
 
   mov ah, 0x0e
-  mov al, [bp + 4]
+  mov al, [bp+4]
   xor bx, bx
   int 0x10
 
@@ -21,8 +21,8 @@ puts: ; void puts(char *string) ; prints a string to the screen
   push bx
   push ax
 
-  mov si, [bp + 4]
-  mov ds, [bp + 6]
+  mov si, [bp+4]
+  mov ds, [bp+6]
   xor bh, bh
   mov ah, 0x0e
   .loop:
@@ -47,9 +47,9 @@ gets: ; bool gets(char *buffer, uint16 max_count) ; gets a string from the user 
   push dx
   push cx
 
-  mov di, [bp + 4]
-  mov es, [bp + 6]
-  mov cx, [bp + 8]
+  mov di, [bp+4]
+  mov es, [bp+6]
+  mov cx, [bp+8]
 
   xor dx, dx
   .loop:

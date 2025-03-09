@@ -6,7 +6,7 @@
 ;   push si
 ;   push ax
 
-;   mov al, [bp + 4] ; al = color
+;   mov al, [bp+4] ; al = color
 ;   mov si, 0xb800
 ;   mov ds, si
 ;   xor si, si ; ds:si = start address of screen
