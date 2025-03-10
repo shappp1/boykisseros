@@ -145,8 +145,14 @@ ch_cd:
     cmp byte es:[di], '/'
     je .read_root
 
+    push es
+    push di
     call find_file
-    jc .fail
+    mov es, dx
+    mov di, ax
+    or ax, dx
+    test ax, ax
+    jz .fail
 
     test byte es:[di + 11], 0x10
     jz .fail
@@ -214,8 +220,14 @@ ch_type:
   
   call parse_path
 
+  push es
+  push di
   call find_file
-  jc .fail
+  mov es, dx
+  mov di, ax
+  or ax, dx
+  test ax, ax
+  jz .fail
 
   test byte es:[di + 11], 0x10
   jnz .fail

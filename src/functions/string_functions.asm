@@ -177,10 +177,8 @@ strlen: ; uint16 strlen(char *string) ; returns the length of a string
 ;       sub al, 0x57
 ;       ret
 
-
-; looks for the first space in string, changes it to 0, and return offset of first non-space character after space(s) in the same segment as string
-; returns the offset of '\0' if end of string is found
-split_args: ; char *split_args(char *string) ; looks for the first space in a string, changes it to 0, and returns address of character after space
+; returns a pointer to '\0' if end of string is found
+split_args: ; char *split_args(char *string) ; looks for the first space in string, changes it to 0, and returns pointer to first non-space character after space(s)
   push bp
   mov bp, sp
   push ds
@@ -205,6 +203,7 @@ split_args: ; char *split_args(char *string) ; looks for the first space in a st
 
   .end:
     mov ax, si
+    mov dx, ds
     dec ax
     pop si
     pop ds

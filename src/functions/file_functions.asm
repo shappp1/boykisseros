@@ -33,9 +33,9 @@ read_disk: ; bool read_disk(uint16 lba, char *buffer, uint8 count, uint8 drive_n
   mov dl, [bp+12]
   mov ah, 0x02
   int 0x13 ; al = count, cx = cylinder/sector, dh = head, dl = drive, es:bx = buffer
-  mov ax, 0
-  jc .end ; ax = 0 if error
-  inc ax ; ax = 1, success
+  mov al, 0
+  jc .end ; al = 0 if error
+  inc al ; al = 1, success
   .end:
     pop bx
     pop es
@@ -44,45 +44,53 @@ read_disk: ; bool read_disk(uint16 lba, char *buffer, uint8 count, uint8 drive_n
     pop bp
     ret 10
 
-find_file: ; looks for file in directory buffer | params: ( 8.3: es:di ) | returns: ( entry_address: es:di, not_found: CF set )
+; file_name does not have to be \0 terminated, it is simply an 8.3 filename
+; returns address of entry in directory buffer, or 0:0 if not found
+find_file: ; char *find_file(char *file_name) ; looks for file in directory buffer
+  push bp
+  mov bp, sp
+  push es
+  push di
   push ds
   push si
   push cx
-  mov cx, DIR_SEGMENT
-  mov ds, cx
+
+  mov si, DIR_SEGMENT
+  mov ds, si
   mov si, DIR_OFFSET
-  test byte [si + 11], 0x08
-  jz .loop
-  .skip:
-    add si, 0x20
+
+  mov di, [bp+4]
+  mov es, [bp+6]
+
+  xor ax, ax
+  xor dx, dx ; dx:ax = NULL
+
+  sub si, 0x20
   .loop:
-    cmp byte [si], 0x05
-    je .skip
+    add si, 0x20
     cmp byte [si], 0xE5
-    je .skip
+    je .loop
     cmp byte [si], 0
-    je .not_found
+    je .end
+
     push di
     push si
     mov cx, 11
     repe cmpsb
     pop si
     pop di
-    je .found
-    jmp .skip
-  .not_found:
-    stc
-    jmp .end
-  .found:
-    mov cx, ds
-    mov es, cx
-    mov di, si
-    clc
+    jne .loop
+
+  mov ax, si
+  mov dx, ds
   .end:
     pop cx
     pop si
     pop ds
-    ret
+    pop di
+    pop es
+    pop bp
+    ret 4
 
 read_cluster_chain: ; bool read_cluster_chain(char *buffer, uint16 first_cluster_no) ; reads a chain of FAT12 clusters starting from first_cluster | params: ( buffer: es:bx, first_cluster: ax ) | returns: ( error: CF set )
   push bp
