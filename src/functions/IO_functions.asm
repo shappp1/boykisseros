@@ -39,6 +39,7 @@ puts: ; void puts(char *string) ; prints a string to the screen
     pop bp
     ret 4
 
+; may want to move this functionality somewhere else (when we seperate COMMAND.RAW)
 gets: ; bool gets(char *buffer, uint16 max_count) ; gets a string from the user and returns true if terminated (^C)
   push bp
   mov bp, sp
@@ -107,7 +108,6 @@ gets: ; bool gets(char *buffer, uint16 max_count) ; gets a string from the user 
 
 ; NOTE: seperator and right_align are optional, load with 0 to disable
 ; WARNING: right_align must have enough space to fit entire number, including seperators and signs, otherwise there will be undefined behaviour
-
 fputint32: ; void fputint32(int32 n, char seperator, uint8 right_align, bool signed) ; prints an integer to the screen
   push bp
   mov bp, sp

@@ -237,7 +237,7 @@ read_disk: ; reads count sectors starting from LBA address | params: ( lba: ax, 
 ;; DATA
 
 error_msg: db "Silly little disk error :3", endl, 0
-file_name: db "BOS     SYS"
+file_name: db "BOS     RAW"
 
 times 510-($-$$) db 0
 dw 0xaa55

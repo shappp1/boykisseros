@@ -12,6 +12,6 @@ mkfs.fat -F 12 -n "BOYKISSEROS" build/main.img
 dd if=build/boot.bin of=build/main.img conv=notrunc
 
 # copy over some files
-mcopy -i build/main.img build/kernel.bin "::BOS.SYS"
+mcopy -i build/main.img build/kernel.bin "::BOS.RAW"
 mcopy -i build/main.img src/dummy/dummy.txt "::DUMMY.TXT"
 mcopy -i build/main.img src/dummy/folder "::FOLDER"

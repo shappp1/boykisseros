@@ -13,13 +13,10 @@ cmps: ; bool cmps(char *string1, char *string2) ; compares two strings and retur
 
   .loop:
     mov al, [si]
-    mov ah, es:[di]
-    cmp al, ah
+    cmpsb
     jne .not_equal
     test al, al
     jz .equal
-    inc si
-    inc di
     jmp .loop
   .not_equal:
     xor ax, ax

@@ -7,7 +7,7 @@
 ; 0x10000 MAIN_CODE ...
 ;
 
-read_disk: ; bool read_disk(uint16 lba, char *buffer, uint8 count, uint8 drive_no) ; reads count sectors starting from LBA address and returns true if successful and false if error
+read_disk: ; bool read_disk(uint16 lba, char *buffer, uint8 count, uint8 drive_no) ; reads count sectors starting from LBA address
   push bp
   mov bp, sp
   push dx
@@ -92,160 +92,231 @@ find_file: ; char *find_file(char *file_name) ; looks for file in directory buff
     pop bp
     ret 4
 
-read_cluster_chain: ; bool read_cluster_chain(char *buffer, uint16 first_cluster_no) ; reads a chain of FAT12 clusters starting from first_cluster | params: ( buffer: es:bx, first_cluster: ax ) | returns: ( error: CF set )
+read_cluster_chain: ; bool read_cluster_chain(char *buffer, uint16 first_cluster_no) ; reads a chain of FAT12 clusters starting from first_cluster
   push bp
   mov bp, sp
-  push es
   push ds
   push di
   push dx
-  push cx
-  push bx
   
-  mov bx, [bp+4]
-  mov es, [bp+6]
-  mov ax, [bp+8]
+  mov di, FAT_SEGMENT
+  mov ds, di
 
-  mov cx, FAT_SEGMENT
-  mov ds, cx
+  mov ax, [bp+8]
   .loop:
     mov di, ax
     sub ax, 2
+    xor dx, dx
     mov dl, fs:[SPC]
-    xor dh, dh
     mul dx
-    add ax, fs:[DATA_START]
-    mov cl, fs:[SPC]
-    mov dl, fs:[DRIVE]
-    push dx
-    push cx
-    push es
-    push bx
+    add ax, fs:[DATA_START] ; ax = LBA of cluster
+
+    push word fs:[DRIVE]
+    push word fs:[SPC] ; # of sectors to read
+    push word [bp+6]
+    push word [bp+4]
     push ax
     call read_disk
     test al, al
     jz .end ; will keep al = false to indicate error
-    mov al, cl
-    xor ah, ah
+
+    xor ax, ax
+    mov al, fs:[SPC]
     mul word fs:[BPS]
-    add bx, ax
+    add [bp+4], ax
 
     mov ax, di
     shr di, 1
     add di, ax
-    mov cx, [di + FAT_OFFSET]
+    mov dx, [di + FAT_OFFSET]
     test ax, 1
     jz .even
-    shr cx, 4
+    shr dx, 4
     jmp .check_done
   .even:
-    and cx, 0xFFF
+    and dx, 0x0FFF
   .check_done:
-    mov ax, cx
-    cmp cx, 0xFF8
+    mov ax, dx
+    cmp dx, 0xFF8
     jl .loop
-    mov ax, 1
+    mov al, 1
   .end:
-    pop bx
-    pop cx
     pop dx
     pop di
     pop ds
-    pop es
     pop bp
     ret 6
- 
-; next_in_path is a pointer to the next file in the path after any '/' ( *next_in_path is 0 if at end of path )
-; file_name[0] is 0 if path is invalid or '/' if path starts with '/'
-parse_path: ; takes a path string and splits off an 8.3 file name | params: ( path: ds:si ) | returns: ( next_in_path: ds:si, file_name: es:di )
+
+; dir_handle is the address of the start of a 32-bit directory entry, a dir_handle of 0:0 will load root directory
+change_directory: ; bool change_directory(char *dir_handle) ; loads ./dir_handle/ into DIR_SEGMENT:DIR_OFFSET
+  push bp
+  mov bp, sp
+  push ds
+  push si
   push dx
+
+  mov si, [bp+4]
+  or si, [bp+6]
+  jz .read_root
+
+  mov si, [bp+4]
+  mov ds, [bp+6]
+
+  xor al, al
+  test byte [si+HANDLE_ATTRIB], 0x10 ; check if dir
+  jz .end
+
+  mov ax, [si+HANDLE_CLUSTER_LOW]
+  test ax, ax
+  jz .read_root
+
+  push ax
+  push DIR_SEGMENT
+  push DIR_OFFSET
+  call read_cluster_chain
+  jmp .end ; use al from read_cluster_chain
+
+  .read_root:
+    ; ax = root entry count in sectors
+    mov ax, [ROOT_ENTRIES]
+    shl ax, 5
+    xor dx, dx
+    div word [BPS]
+    test dx, dx
+    jz .no_inc
+    inc ax
+    .no_inc:
+
+    ; dx = lba of root dir
+    mov dx, [DATA_START]
+    sub dx, ax
+
+    push word fs:[DRIVE]
+    push ax
+    push DIR_SEGMENT
+    push DIR_OFFSET
+    push dx
+    call read_disk
+    ; use al from read_disk
+  .end:
+    pop dx
+    pop si
+    pop ds
+    pop bp
+
+; returns a pointer to the next file in the path after any '/' ( points to 0 is 0 if at end of path ), returns 0:0 if bath is invalid
+; buffer[0] is '/' if path starts with '/'
+parse_path: ; char *parse_path(char *path_string, char *buffer) ; takes a path string and splits off an 8.3 file name
+  push bp
+  mov bp, sp
+  push es
+  push di
+  push ds
+  push si
   push cx
   push bx
-  push ax
-  mov al, ' '
-  mov di, .name_buffer
-  mov byte es:[di], 0
+
+  mov si, [bp+4]
+  mov ds, [bp+6]
+  mov di, [bp+8]
+  mov es, [bp+10]
+
+  ; if path_string is empty, return NULL
+  xor dx, dx
+  xor ax, ax
   cmp byte [si], 0
   je .end
+
+  ; if path_string[0] is '/', set buffer[0] to '/' and return path_string + 1
+  mov byte es:[di], '/'
+  mov dx, ds
+  mov ax, si
+  inc ax
   cmp byte [si], '/'
-  je .root
-  xor bx, bx
-  mov dx, 1
-  .slash_loop:
-    inc bx
-    cmp byte [si + bx], 0
-    je .no_slash
-    inc dx
-    cmp byte [si + bx], '/'
-    jne .slash_loop
-    mov byte [si + bx], 0
-  .no_slash:
-    add di, 8
-    mov cx, 3
-    rep stosb
-    mov di, .name_buffer
+  je .end
+
+  ; fill buffer with spaces
+  mov cx, 11
+  mov al, ' '
+  rep stosb
+  sub di, 11
+  
+  push si
+  xor cx, cx ; cx = length
+  .get_length:
+    inc cx ; fine because we checked for empty string earlier
+    lodsb
+    cmp al, '/'
+    je .got_length
+    test al, al
+    jz .got_length
+    jmp .get_length
+  .got_length:
+  pop si
+
+  mov bx, cx
+  .get_dot_loc:
     dec bx
-    test bx, bx
-    jz .no_ext
-  .loop:
-    dec bx
-    test bx, bx
-    jz .no_ext
     cmp byte [si + bx], '.'
-    jne .loop
-    ; code for with ext
-    add di, 8
-    mov byte [si + bx], 0
-    mov cx, bx
-  .ext:
-    inc bx
-    cmp byte [si + bx], 0
-    jne .ext
-    push si
-    add si, cx
-    inc si
-    sub cx, bx
-    neg cx
-    cmp cx, 3
-    jle .no_truncate_ext
-    mov cx, 3
-  .no_truncate_ext:
-    mov bx, cx
-    rep movsb
-    mov cx, bx
-    pop si
-    sub cx, 3
-    neg cx
-    rep stosb
-    xor bx, bx
-    mov di, .name_buffer
-  .no_ext: ; bx = 0  di = name_buffer
-    inc bx
-    cmp byte [si + bx], 0
-    jne .no_ext
-    mov cx, bx
-    cmp cx, 8
-    jle .no_truncate_name
-    mov cx, 8
-  .no_truncate_name:
-    push si
-    mov bx, cx
-    rep movsb
-    mov cx, bx
-    pop si
-    sub cx, 8
-    neg cx
-    rep stosb
-    mov di, .name_buffer
-    add si, dx
-    jmp .end
-  .root:
-    mov byte es:[di], '/'
-    inc si
+    je .got_dot_loc
+    test bx, bx
+    jz .got_dot_loc
+  .got_dot_loc:
+
+  dec cx
+  push cx
+  cmp bx, cx
+  je .no_ext
+  test bx, bx
+  jz .no_ext
+
+  ; if extension is too large return NULL
+  xor dx, dx
+  xor ax, ax
+  sub cx, bx
+  cmp cx, 3
+  jg .end
+
+  push di
+  push si
+  add di, 8
+  add si, bx
+  inc si
+  .move_ext:
+    lodsb
+    stosb
+    loop .move_ext
+  pop si
+  pop di
+  mov cx, bx
+  dec cx
+
+  .no_ext:
+  ; if name is too large return NULL
+  inc cx
+  xor dx, dx
+  xor ax, ax
+  cmp cx, 8
+  jg .end
+  
+  push si
+  .move_name:
+    lodsb
+    stosb
+    loop .move_name
+  
+  mov dx, ds
+  pop ax
+  pop bx
+  add ax, bx
+  add ax, 2
+
   .end:
-    pop ax
     pop bx
     pop cx
-    pop dx
-    ret
-  .name_buffer: times 12 db 0
+    pop si
+    pop ds
+    pop di
+    pop es
+    pop bp
+    ret 8

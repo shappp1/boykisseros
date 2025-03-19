@@ -102,9 +102,10 @@ ch_invalid:
 ;    1-byte data types are pushed as 2-bytes, the highest byte is ignored
 ;    for pointers, push segment first, then offset
 ;    for bools, 0 is false, and any non-zero value is true (typically 1)
-;    1-byte values are returned in al
+;    1-byte values are returned in al, ah is not preserved
 ;    2-byte values are returned in ax
 ;    pointers (and 4-byte values) are returned in dx:ax
+;    default behaviour for bool functions is to return true upon success and false upon error
 
 %include "src/functions/IO_functions.asm"
 %include "src/functions/string_functions.asm"
@@ -129,27 +130,31 @@ str_file: db "FILE", 0
 str_writing: db "WRITING", 0
 str_debug: db "DEBUG", 0
 
-str_help_generic: db "GENERIC | page 1 of 1", endl
-                  db "  help - show this message", endl
-                  db "  clear - clear the screen", endl
-                  db "  echo - print a message to the screen", endl
-                  db "! color - change color of screen", endl
-                  db "  boyfetch - show boykisser and OS info UwU", endl
-                  db "  restart - restart the operating system", endl
-                  db "  electrocute - cutely kill the operating system", endl, 0
+str_help_generic:
+  db "GENERIC | page 1 of 1", endl
+  db "  help - show this message", endl
+  db "  clear - clear the screen", endl
+  db "  echo - print a message to the screen", endl
+  db "  color - change color of screen", endl
+  db "  boyfetch - show boykisser and OS info UwU", endl
+  db "  restart - restart the operating system", endl
+  db "  electrocute - cutely kill the operating system", end2l, 0
 
-str_help_file: db "FILE | page 1 of 1", endl
-               db "  ls - list contents of current working directory", endl
-               db "! cd - change the current working directory", endl
-               db "! type - print the contents of a file", endl, 0
+str_help_file:
+  db "FILE | page 1 of 1", endl
+  db "  ls - list contents of current working directory", endl
+  db "! cd - change the current working directory", endl
+  db "! type - print the contents of a file", end2l, 0
 
-str_help_writing: db "WRITING | page 1 of 1", endl
-                  db "  sp - (scratchpad) temporary spot to write stuff down (does not save)", endl, 0
+str_help_writing:
+  db "WRITING | page 1 of 1", endl
+  db "  sp - (scratchpad) temporary spot to write stuff down (does not save)", end2l, 0
 
-str_help_debug: db "DEBUG | page 1 of 1", endl
-                db "  numtest - perform various tests for printing numbers", endl, 0
+str_help_debug:
+  db "DEBUG | page 1 of 1", endl
+  db "  numtest - perform various tests for printing numbers", end2l, 0
 
-str_color: db "The color command is currently unavailable", endl, 0
+str_color: db "The color command is currently (maybe permenently) unavailable", endl, 0
 ; str_color: db "Usage: color [color]", endl
 ;            db " - [color] is either 1 or 2 hexadecimal digits representing the VGA 16-color", endl
 ;            db "attribute (if 1 digit, background is set to black)", endl, 0
@@ -160,18 +165,18 @@ str_boyfetch: db "    .@.                       .@-", endl
               db "  @@@@@@@@@.  =@@@@@:    @@@@@@@@@.", endl
               db " .@@@@@@@@@@@  :=@@@@@%:@@@@@@@@@@.", endl
               db " .@@@@@@@@@+@@@@@@@@@@@@@@@@@@@@@@.", endl
-              db "  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@     The Boykisser Operating System (BOS)", endl
-              db "  #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#     VERSION:  v0.1-ALPHA", endl
-              db "   @@@@@@@@@@@@@@@@@-   ++.*@@@@@      CODENAME: BEGINNINGS", endl
+              db "  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    The Boykisser Operating System (BOS)", endl
+              db "  #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#    VERSION:  v0.1-ALPHA", endl
+              db "   @@@@@@@@@@@@@@@@@-   ++.*@@@@@     CODENAME: BEGINNINGS", endl
               db "    @@@.@@.   @@@@@@    @@@+@@@:", endl
-              db ".@%-:@@@@@-   @@@@@@.   @@@.@@@@@      SPECS:", endl
-              db "  @@@@@=@@@  -@@@@@@@*:@@@@*@@@=         Architecture: x86", endl
-              db "   .@-=@=@@@@@@@@@@@@@@@@-%+@@@          File System:  FAT12", endl
+              db ".@%-:@@@@@-   @@@@@@.   @@@.@@@@@     SPECS:", endl
+              db "  @@@@@=@@@  -@@@@@@@*:@@@@*@@@=        Architecture: x86", endl
+              db "   .@-=@=@@@@@@@@@@@@@@@@-%+@@@         File System:  FAT12", endl
               db "  .@@@@@@@@@@%##:%::@@@@@@@@@@@@#", endl
-              db "    .  =@@@@@@@@@@@@@@@@@@.            AUTHOR:", endl
-              db "          @=..@@@@@@@@@@                 Name:      Shane Goodrick", endl
-              db "            @@@@@@@@@@@@@                GitHub:    https://github.com/shappp1", endl
-              db "           @@@@@@@@@@@@@@+               Help From: https://github.com/theridev", endl
+              db "    .  =@@@@@@@@@@@@@@@@@@.           AUTHOR:", endl
+              db "          @=..@@@@@@@@@@                Name:      Shane Goodrick", endl
+              db "            @@@@@@@@@@@@@               GitHub:    https://github.com/shappp1", endl
+              db "           @@@@@@@@@@@@@@+              Help From: https://github.com/theridev", endl
               db "            %@@@@@@@@@@@@@.", endl
               db "           .@@@@@@@@@@@@@@@", endl
               db "           @@@@@@@@@@@@@@@@.", endl
@@ -194,5 +199,6 @@ str_endl: db endl, 0
 
 ; color: db DEFAULT_COLOR
 
+file_name_buffer: times 12 db 0
 path_buffer: times 128 db 0
 command_buffer: times 256 db 0

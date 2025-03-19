@@ -1,3 +1,13 @@
+%define BASE           0x7C00
+%define KERNEL_SEGMENT 0x1000
+%define KERNEL_OFFSET  0x0000
+%define FAT_SEGMENT    0x07E0
+%define FAT_OFFSET     0x0000
+%define DIR_SEGMENT    0x0900
+%define DIR_OFFSET     0x0000
+%define FILE_SEGMENT   0x0AC0
+%define FILE_OFFSET    0x0000
+
 %define DATA_START       BASE-0x02
 %define OEM              BASE+0x03
 %define BPS              BASE+0x0B
@@ -18,15 +28,18 @@
 %define VOLLABEL         BASE+0x2B
 %define FILESYS          BASE+0x36
 
-%define BASE           0x7C00
-%define KERNEL_SEGMENT 0x1000
-%define KERNEL_OFFSET  0x0000
-%define FAT_SEGMENT    0x07E0
-%define FAT_OFFSET     0x0000
-%define DIR_SEGMENT    0x0900
-%define DIR_OFFSET     0x0000
-%define FILE_SEGMENT   0x0AC0
-%define FILE_OFFSET    0x0000
+%define HANDLE_FILE_NAME     0x00
+%define HANDLE_ATTRIB        0x0B
+%define HANDLE_RESERVED      0x0C
+%define HANDLE_CREATION_CS   0x0D
+%define HANDLE_CREATION_TIME 0x0E
+%define HANDLE_CREATION_DATE 0x10
+%define HANDLE_ACCESSED_DATE 0x12
+%define HANDLE_CLUSTER_HIGH  0x14
+%define HANDLE_MODIFIED_TIME 0x16
+%define HANDLE_MODIFIED_DATE 0x18
+%define HANDLE_CLUSTER_LOW   0x1A
+%define HANDLE_FILE_SIZE     0x1C
 
 ; %define DEFAULT_COLOR 0x07
 
